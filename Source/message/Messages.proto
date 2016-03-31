@@ -1,0 +1,15 @@
+syntax = "proto3";
+package networktest;
+
+
+message PingMessage {
+ enum MsgType {
+    PING = 0;
+    RESPONSE = 1;
+  }
+
+ string token = 1;
+ MsgType messageType = 2;
+ double responseTime = 3;
+ bool isReliable = 4;
+}
