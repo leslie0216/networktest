@@ -34,7 +34,7 @@
                                                object:nil];
     
     [[NSNotificationCenter defaultCenter] addObserver:self
-                                             selector:@selector(startBrowserFailedNotification:)                                                 name:SERVER_DID_NOT_START_NOTIFICATION
+                                             selector:@selector(startConnectionFailedNotification:)                                                 name:SERVER_CLIENT_DID_NOT_START_NOTIFICATION
                                                object:nil];
     
     [[NSNotificationCenter defaultCenter] addObserver:self
@@ -54,7 +54,7 @@
 
 -(void)btnDoneClicked
 {
-    [networkWrapper finishConnection];
+    [networkWrapper finishConnectionSetup];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     CCScene *testScene = [CCBReader loadAsScene:@"TestScene"];
     [[CCDirector sharedDirector] replaceScene:testScene];
@@ -62,7 +62,7 @@
 
 -(void)btnBackClicked
 {
-    [networkWrapper finishConnection];
+    [networkWrapper finishConnectionSetup];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     CCScene *SettingScene = [CCBReader loadAsScene:@"SettingScene"];
     [[CCDirector sharedDirector] replaceScene:SettingScene];
@@ -76,7 +76,7 @@
 - (void)foundPeerWithNotification:(NSNotification *)notification
 {
     NSString* remoteName = [[notification userInfo] objectForKey:@"peerName"];
-    [self updateStatus:[NSString stringWithFormat:@"\nfound %@\ntry to connect to %@...",remoteName, remoteName]];
+    [self updateStatus:[NSString stringWithFormat:@"\nfound %@\ntrying to connect to %@...",remoteName, remoteName]];
 }
 
 - (void)peerChangedStateWithNotification:(NSNotification *)notification
@@ -85,15 +85,16 @@
     [self updateStatus:string];
 }
 
-- (void)startBrowserFailedNotification:(NSNotification *)notification
+- (void)startConnectionFailedNotification:(NSNotification *)notification
 {
     NSError* error = [[notification userInfo] objectForKey:@"error"];
-    [self updateStatus:[NSString stringWithFormat:@"\nstart browser failed : %@",error]];
+    [self updateStatus:[NSString stringWithFormat:@"\nstart connection failed : %@",error]];
 }
 
 - (void)serverClientConnectionDoneNotification:(NSNotification *)notification
 {
     if ([networkWrapper currentConnectionCount] > 0) {
+        [self updateStatus:@"\nconnection done!!!"];
         btnDone.enabled = YES;
     } else {
         btnDone.enabled = NO;

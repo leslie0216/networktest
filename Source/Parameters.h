@@ -17,7 +17,7 @@ typedef enum networkConnectionType {
     POWER_NONE
 } networkConnectionType;
 
-#define SERVER_DID_NOT_START_NOTIFICATION @"NoodlecakeNetworktest_DidNotStartServerNotification"
+#define SERVER_CLIENT_DID_NOT_START_NOTIFICATION @"NoodlecakeNetworktest_DidNotStartServerClientNotification"
 #define SERVER_DID_FOUND_CLIENT_NOTIFICATION @"NoodlecakeNetworktest_DidFoundClientNotification"
 #define SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION @"NoodlecakeNetworktest_DidConnectionDoneNotification"
 #define CONNECTION_STATE_CHANGED_NOTIFICATION @"NoodlecakeNetworktest_DidChangeConnectionStateNotification"

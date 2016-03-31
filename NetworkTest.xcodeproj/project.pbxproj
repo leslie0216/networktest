@@ -526,8 +526,8 @@
 		9B399CA51CAB19A500F9F1EA /* MultipeerConnectivity */ = {
 			isa = PBXGroup;
 			children = (
-				9B399CA61CAB19E100F9F1EA /* MPCHandler.m */,
 				9B399CA71CAB19E100F9F1EA /* MPCHandler.h */,
+				9B399CA61CAB19E100F9F1EA /* MPCHandler.m */,
 			);
 			name = MultipeerConnectivity;
 			sourceTree = "<group>";

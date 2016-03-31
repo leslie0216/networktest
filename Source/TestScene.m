@@ -37,6 +37,7 @@
     CCLabelTTF *lbConnectionStatus;
     CCLabelTTF *lbNetworkMode;
     CCLabelTTF *lbPingInfo;
+    CCLabelTTF *lbIsHost;
     
     NetworkConnectionWrapper* networkWrapper;
     
@@ -68,6 +69,7 @@
 {
     networkWrapper = [NetworkConnectionWrapper sharedWrapper];
     
+    lbIsHost.string = [networkWrapper isHost] ? @"Yes" : @"No";
     lbPingInfo.string = @"";
     [self updateConnectionStatus];
     
@@ -156,6 +158,7 @@
         
         CCLOG(@"Receive time(r) = %f with token : %@ \n", receiveTime, token);
         CCLOG(@"Start time(r) = %f with token : %@ \n", info.startTime, token);
+        CCLOG(@"ResponseTime = %f \n", message.responseTime);
         
         CFTimeInterval timeInterval = receiveTime - info.startTime - message.responseTime;
         CCLOG(@"timeInterval : %f", timeInterval);
@@ -195,7 +198,12 @@
         packet.responseTime = t2 - receiveTime;
         
         NSData *sendData = [packet data];
-        [networkWrapper sendData:sendData toPeer:[[notification userInfo] objectForKey:@"peerName"] reliableFlag:packet.isReliable];
+        if ([networkWrapper isHost]) {
+            [networkWrapper sendData:sendData toPeer:[[notification userInfo] objectForKey:@"peerName"] reliableFlag:packet.isReliable];
+        } else {
+            [networkWrapper sendDataToHost:sendData reliableFlag:packet.isReliable];
+        }
+        
         
         CCLOG(@"send response with token : %@ and local response time : %f", message.token, packet.responseTime);
     }

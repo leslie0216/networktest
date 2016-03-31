@@ -13,12 +13,14 @@
 @property(strong, nonatomic)CBPeripheral *peripheral;
 @property (strong, nonatomic) CBCharacteristic *readCharacteristic;
 @property (strong, nonatomic) CBCharacteristic *writeCharacteristic;
+@property(strong, nonatomic)NSString *name;
 @end
 
 @implementation PeripheralInfo
 @synthesize peripheral;
 @synthesize readCharacteristic;
 @synthesize writeCharacteristic;
+@synthesize name;
 @end
 
 
@@ -27,13 +29,23 @@
 {
     BOOL isHost;
     //MCPeerID *hostPeerID;
+    
+    // client
+    BOOL isConnectedToCentral;
+    NSMutableArray *dataToSend;
 }
 
 @property (nonatomic, strong) dispatch_queue_t concurrentChatDelegateQueue;
 
 // server properties
 @property (strong, nonatomic) CBCentralManager *centralManager;
-@property (strong, nonatomic) NSMutableDictionary *discoveredPeripherals; // key:name value:PeripheralInfo
+@property (strong, nonatomic) NSMutableDictionary<NSString*, PeripheralInfo*> *discoveredPeripherals; // key:UUIDString value:PeripheralInfo
+
+// client properties
+@property (strong, nonatomic) CBPeripheralManager *peripheralManager;
+@property (strong, nonatomic) CBMutableCharacteristic *sendCharacteristic;
+@property (strong, nonatomic) CBMutableCharacteristic *receiveCharacteristic;
+
 @end
 
 @implementation BluetoothHandler
@@ -54,40 +66,70 @@
 -(void) startClient
 {
     isHost = NO;
-    CCLOG(@"function 'startClient' is not implemented by current network type!!!");
+    self.peripheralManager = [[CBPeripheralManager alloc] initWithDelegate:self queue:self.concurrentChatDelegateQueue];
 }
 
 -(void)sendDataToAll : (NSData*)data reliableFlag:(BOOL)isReliable
 {
-    CCLOG(@"function 'sendDataToAll' is not implemented by current network type!!!");
+    if (isHost) {
+        NSEnumerator *enmuerator = [self.discoveredPeripherals objectEnumerator];
+        for (PeripheralInfo *info in enmuerator) {
+            [info.peripheral writeValue:data forCharacteristic:info.writeCharacteristic type:CBCharacteristicWriteWithResponse];
+        }
+    }
 }
 
 -(void)sendDataToHost : (NSData*)data reliableFlag:(BOOL)isReliable
 {
-    CCLOG(@"function 'sendDataToHost' is not implemented by current network type!!!");
+    if (!isHost) {
+        BOOL didSend = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
+        
+        if (dataToSend == nil) {
+            dataToSend = [[NSMutableArray alloc] init];
+        }
+        if (!didSend) {
+            CCLOG(@"message didn't send, added to dataToSend queue.");
+            if (![dataToSend containsObject:data]) {
+                [dataToSend addObject:data];
+            }
+        } else {
+            [dataToSend removeObject:data];
+        }
+    }
 }
 
 -(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable
 {
-    CCLOG(@"function 'sendData toPeer' is not implemented by current network type!!!");
+    PeripheralInfo *info = self.discoveredPeripherals[peerName];
+    if (info) {
+        [info.peripheral writeValue:data forCharacteristic:info.writeCharacteristic type:CBCharacteristicWriteWithResponse];
+    }
 }
 
 -(int) connectionCount
 {
     if (isHost) {
         return [self.discoveredPeripherals count];
+    } else {
+        if (isConnectedToCentral) {
+            return 1;
+        } else {
+            return 0;
+        }
     }
-    return 0;
 }
 
 -(void) stopSearch
 {
+    CCLOG(@"Bluetooth server stop search");
     [self.centralManager stopScan];
 }
 
 -(void) stopAdvertise
 {
-    CCLOG(@"function 'stopAdvertise' is not implemented by current network type!!!");
+    CCLOG(@"Bluetooth client stop advertise");
+
+    [self.peripheralManager stopAdvertising];
 }
 
 -(void) disconnect
@@ -115,9 +157,26 @@
                 [self.centralManager cancelPeripheralConnection:info.peripheral];
             }
         }
+    } else {
+        
     }
 }
 // end implement NetworkConnectionProtocol
+
+-(void)broadcastConnectionInfo:(NSString*)message
+{
+    NSDictionary *userInfo = @{ @"connectionInfo": message};
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [[NSNotificationCenter defaultCenter] postNotificationName:CONNECTION_STATE_CHANGED_NOTIFICATION
+                                                            object:nil
+                                                          userInfo:userInfo];
+    });
+}
+
+/***********************************************************************/
+/*                          SERVER FUNCTIONS                           */
+/***********************************************************************/
 
 // begin CBCentralManagerDelegate
 - (void)centralManagerDidUpdateState:(CBCentralManager *)central
@@ -127,7 +186,7 @@
         NSDictionary *userInfo = @{ @"error": @"Bluetooth Off"};
         
         dispatch_async(dispatch_get_main_queue(), ^{
-            [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_DID_NOT_START_NOTIFICATION
+            [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_DID_NOT_START_NOTIFICATION
                                                                 object:nil
                                                               userInfo:userInfo];
         });
@@ -142,11 +201,23 @@
 
 - (void) centralManager:(CBCentralManager *)central didDiscoverPeripheral:(CBPeripheral *)peripheral advertisementData:(NSDictionary<NSString *,id> *)advertisementData RSSI:(NSNumber *)RSSI
 {
-    NSLog(@"Discovered %@ at %@", peripheral.name, RSSI);
+    if (![advertisementData[CBAdvertisementDataServiceUUIDsKey] containsObject:[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID]] || [advertisementData count] < 3) {
+        return;
+    }
+    NSString* name = advertisementData[CBAdvertisementDataLocalNameKey];
     
-    if (self.discoveredPeripherals[peripheral.name] == nil) {
+    if (self.discoveredPeripherals[peripheral.identifier.UUIDString] == nil) {
+        CCLOG(@"Discovered %@ at %@", peripheral.name, RSSI);
+
+        PeripheralInfo *info = [[PeripheralInfo alloc]init];
+        info.peripheral = peripheral;
+        info.readCharacteristic = nil;
+        info.writeCharacteristic = nil;
+        info.name = name;
+        self.discoveredPeripherals[peripheral.identifier.UUIDString] = info;
+        peripheral.delegate = self;
         
-        NSDictionary *userInfo = @{ @"peerName": [peripheral name]};
+        NSDictionary *userInfo = @{ @"peerName": name};
         
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_DID_FOUND_CLIENT_NOTIFICATION
@@ -154,67 +225,68 @@
                                                               userInfo:userInfo];
         });
         
-        CCLOG(@"Connecting to peripheral %@", peripheral);
+        CCLOG(@"Connecting to peripheral name = %@ id = %@", name, peripheral.identifier.UUIDString);
         [self.centralManager connectPeripheral:peripheral options:nil];
     }
 }
 
 - (void) centralManager:(CBCentralManager *)central didFailToConnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
 {
-    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to connect to %@ error : %@", [peripheral name], error]];
-
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
+    if (info) {
+        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to connect to %@ error : %@", info.name, error]];
+        
+        [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
+    } else {
+        // shouldn't be here
+        CCLOG(@"error!!!  cannot find peripheral in discoveredPeripherals");
+    }
+    
     [self.centralManager cancelPeripheralConnection:peripheral];
 }
 
 - (void) centralManager:(CBCentralManager *)central didConnectPeripheral:(CBPeripheral *)peripheral
 {
-    CCLOG(@"Connected to %@", peripheral.name);
-    
-    if (self.discoveredPeripherals[peripheral.name] == nil) {
-        PeripheralInfo *info = [[PeripheralInfo alloc]init];
-        info.peripheral = peripheral;
-        info.readCharacteristic = nil;
-        info.writeCharacteristic = nil;
-        self.discoveredPeripherals[peripheral.name] = info;
-        peripheral.delegate = self;
-        
-        CCLOG(@"Trying to find transfer service in %@", peripheral.name);
-        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nconnected with %@\nfinding transfer service in %@", [peripheral name], [peripheral name]]];
-        
-        [peripheral discoverServices:@[[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID]]];
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
+    if (!info) {
+        // shouldn't be here
+        CCLOG(@"error!!!  cannot find peripheral in discoveredPeripherals");
+        return;
     }
+    
+    CCLOG(@"Connected to %@", info.name);
+    CCLOG(@"Trying to find transfer service in %@", info.name);
+    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nconnected with %@\nfinding transfer service in %@", info.name, info.name]];
+    [peripheral discoverServices:@[[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID]]];
 }
 
 - (void)centralManager:(CBCentralManager *)central didDisconnectPeripheral:(CBPeripheral *)peripheral error:(NSError *)error
 {
-    [self broadcastConnectionInfo:nil];
+    CCLOG(@"didDisconnectPeripheral");
+    [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
+    [self broadcastConnectionInfo:@""];
 }
 // end CBCentralManagerDelegate
-
--(void)broadcastConnectionInfo:(NSString*)message
-{
-    NSDictionary *userInfo = @{ @"connectionInfo": message};
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:CONNECTION_STATE_CHANGED_NOTIFICATION
-                                                            object:nil
-                                                          userInfo:userInfo];
-    });
-}
 
 // begin CBPeripheralDelegate
 - (void)peripheral:(CBPeripheral *)peripheral didDiscoverServices:(NSError *)error
 {
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
+    if (!info) {
+        // shouldn't be here
+        CCLOG(@"error!!!  cannot find peripheral in discoveredPeripherals");
+        return;
+    }
     if (error)
     {
-        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to find transfer service in %@ error : %@", [peripheral name], error]];
-        [self.discoveredPeripherals removeObjectForKey:[peripheral name]];
+        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to find transfer service in %@ error : %@", info.name, error]];
+        [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
         [self.centralManager cancelPeripheralConnection:peripheral];
         return;
     }
     
-    CCLOG(@"transfer service found in %@", peripheral.name);
-    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\ntransfer service found in %@\nfinding transfer characteristics in %@", [peripheral name], [peripheral name]]];
+    CCLOG(@"transfer service found in %@", info.name);
+    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\ntransfer service found in %@\nfinding transfer characteristics in %@", info.name, info.name]];
     
     for (CBService *service in peripheral.services)
     {
@@ -224,16 +296,20 @@
 
 - (void) peripheral:(CBPeripheral *)peripheral didDiscoverCharacteristicsForService:(CBService *)service error:(NSError *)error
 {
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
+    if (!info) {
+        // shouldn't be here
+        CCLOG(@"error!!!  cannot find peripheral in discoveredPeripherals");
+        return;
+    }
     if (error) {
-        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to find transfer characteristics in %@ error : %@", [peripheral name], error]];
-        [self.discoveredPeripherals removeObjectForKey:[peripheral name]];
+        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to find transfer characteristics in %@ error : %@", info.name, error]];
+        [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
         [self.centralManager cancelPeripheralConnection:peripheral];
         return;
     }
     
-    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\ntransfer characteristics found in %@",[peripheral name]]];
-    
-    PeripheralInfo *info = self.discoveredPeripherals[peripheral.name];
+    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\ntransfer characteristics found in %@",info.name]];
     
     for (CBCharacteristic *characteristic in service.characteristics)
     {
@@ -268,14 +344,14 @@
         return;
     }
     
-    PeripheralInfo *info = self.discoveredPeripherals[peripheral.name];
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
     
     if (![characteristic isEqual:info.readCharacteristic]) {
         return;
     }
    
     NSDictionary *userInfo = @{ @"data": characteristic.value,
-                                @"peerName": [peripheral name],
+                                @"peerName": peripheral.identifier.UUIDString,
                                 @"time": time};
     
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -296,23 +372,117 @@
         CCLOG(@"Notification began on %@", characteristic);
     } else {
         [self broadcastConnectionInfo:nil];
-        [self.discoveredPeripherals removeObjectForKey:peripheral.name];
+        [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
         [self.centralManager cancelPeripheralConnection:peripheral];
     }
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
-    
+    CCLOG(@"didWriteValueForCharacteristic to %@", peripheral.name);
     
     if (error)
     {
-        NSLog(@"Central write Error : %@", error);
+        CCLOG(@"Central write Error : %@", error);
         return;
     }
 }
 // end CBPeripheralDelegate
 
+/***********************************************************************/
+/*                          CLIENT FUNCTIONS                           */
+/***********************************************************************/
+
+// begin CBPeripheralManagerDelegate
+- (void)peripheralManagerDidUpdateState:(CBPeripheralManager *)peripheral
+{
+    if (peripheral.state != CBPeripheralManagerStatePoweredOn) {
+        CCLOG(@"Bluetooth is OFF !!!");
+        NSDictionary *userInfo = @{ @"error": @"Bluetooth Off"};
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_DID_NOT_START_NOTIFICATION
+                                                                object:nil
+                                                              userInfo:userInfo];
+        });
+        return;
+    }
+    
+    if (peripheral.state == CBPeripheralManagerStatePoweredOn) {
+        self.sendCharacteristic = [[CBMutableCharacteristic alloc] initWithType:[CBUUID UUIDWithString:TRANSFER_CHARACTERISTIC_MSG_FROM_PERIPHERAL_UUID] properties:CBCharacteristicPropertyNotify value:nil permissions:CBAttributePermissionsReadable];
+        
+        self.receiveCharacteristic = [[CBMutableCharacteristic alloc] initWithType:[CBUUID UUIDWithString:TRANSFER_CHARACTERISTIC_MSG_FROM_CENTRAL_UUID] properties:CBCharacteristicPropertyWrite value:nil permissions:CBAttributePermissionsWriteable];
+        
+        CBMutableService *transferService = [[CBMutableService alloc] initWithType:[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID] primary:YES];
+        
+        transferService.characteristics = @[self.sendCharacteristic, self.receiveCharacteristic];
+        
+        [self.peripheralManager addService:transferService];
+        
+        isConnectedToCentral = NO;
+        NSString *name = [UIDevice currentDevice].name;
+        [self.peripheralManager startAdvertising:@{CBAdvertisementDataLocalNameKey:name,CBAdvertisementDataServiceUUIDsKey:@[[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID]]}];
+        CCLOG(@"peripheralManager startAdvertising...");
+    }
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic
+{
+    CCLOG(@"didSubscribeToCharacteristic");
+    if ([self.sendCharacteristic isEqual:characteristic]) {
+        NSString *string = @"\nserver subscribed send characteristic";
+        [self broadcastConnectionInfo:string];
+        
+        isConnectedToCentral = YES;
+        
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
+                                                                object:nil
+                                                              userInfo:nil];
+        });
+    }
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didUnsubscribeFromCharacteristic:(CBCharacteristic *)characteristic
+{
+    CCLOG(@"didUnsubscribeToCharacteristic");
+    if ([self.sendCharacteristic isEqual:characteristic]) {
+        NSString *string = @"\nserver subscribed send characteristic";
+        isConnectedToCentral = NO;
+        [self broadcastConnectionInfo:string];
+    }
+
+}
+
+- (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral
+{
+    for (NSData *data in dataToSend){
+        [self sendDataToHost:data reliableFlag:NO];
+    }
+}
+
+- (void)peripheralManager:(CBPeripheralManager *)peripheral didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests
+{
+    CFTimeInterval receiveTime = CACurrentMediaTime() * 1000;
+    NSNumber *time = [NSNumber numberWithDouble:receiveTime];
+    for (CBATTRequest *request in requests) {
+        if ([request.characteristic.UUID isEqual:[CBUUID UUIDWithString:TRANSFER_CHARACTERISTIC_MSG_FROM_CENTRAL_UUID]]) {
+            [peripheral respondToRequest:request    withResult:CBATTErrorSuccess];
+            
+            NSDictionary *userInfo = @{ @"data": request.value,
+                                        @"peerName": @"Central",
+                                        @"time": time};
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
+                                                                    object:nil
+                                                                  userInfo:userInfo];
+            });
+        }
+    }
+}
+// end CBPeripheralManagerDelegate
 
 
 @end

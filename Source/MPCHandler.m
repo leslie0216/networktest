@@ -198,7 +198,7 @@
     NSDictionary *userInfo = @{ @"error": error};
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_DID_NOT_START_NOTIFICATION
+        [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_DID_NOT_START_NOTIFICATION
                                                             object:nil
                                                           userInfo:userInfo];
     });
