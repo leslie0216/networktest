@@ -62,7 +62,7 @@
 
 -(void)btnBackClicked
 {
-    [networkWrapper finishConnectionSetup];
+    [networkWrapper disconnect];
     [[NSNotificationCenter defaultCenter] removeObserver:self];
     CCScene *SettingScene = [CCBReader loadAsScene:@"SettingScene"];
     [[CCDirector sharedDirector] replaceScene:SettingScene];

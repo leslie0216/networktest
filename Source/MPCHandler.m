@@ -76,7 +76,7 @@
     }
 }
 
--(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable
+-(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable
 {
     for(MCPeerID* peer in self.session.connectedPeers)
     {
@@ -123,6 +123,8 @@
 
 -(void) disconnect
 {
+    [self stopSearch];
+    [self stopAdvertise];
     if (self.session) {
         [self.session disconnect];
         self.session = nil;
@@ -219,6 +221,9 @@
     } else if (state == MCSessionStateNotConnected)
     {
         [string appendFormat:@"\nlost connection with %@",[peerID displayName]];
+        if (peerID == hostPeerID) {
+            [self disconnect];
+        }
     }
     
     NSDictionary *userInfo = @{ @"connectionInfo": string};

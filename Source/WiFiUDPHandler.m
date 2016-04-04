@@ -1,27 +1,27 @@
 //
-//  WiFiTCPHandler.m
+//  WiFiUDPHandler.m
 //  NetworkTest
 //
-//  Created by Chengzhao Li on 2016-04-01.
+//  Created by Chengzhao Li on 2016-04-04.
 //  Copyright © 2016 Apportable. All rights reserved.
 //
 
-#import "WiFiTCPHandler.h"
+#import "WiFiUDPHandler.h"
 #import "Parameters.h"
 
-@interface WiFiTCPHandler()
+@interface WiFiUDPHandler()
 {
     BOOL isHost;
     NSMutableDictionary<NSString*, NSNumber*> *receiveTimeDict;
 }
 
 @property (nonatomic, strong) dispatch_queue_t concurrentChatDelegateQueue;
+@property (strong, nonatomic) GCDAsyncUdpSocket *socket;
 
-@property (strong, nonatomic) GCDAsyncSocket* socket;
 
 // server properties
 @property (strong, nonatomic) NSNetService *service;
-@property (strong, nonatomic) NSMutableArray<GCDAsyncSocket*> *clientSockets;
+@property (strong, nonatomic) NSMutableArray<NSData*> *clientAddresses;
 
 // client properties
 @property (strong, nonatomic) NSNetServiceBrowser *serviceBrowser;
@@ -30,23 +30,21 @@
 
 @end
 
-
-@implementation WiFiTCPHandler
-
+@implementation WiFiUDPHandler
 // begin implement NetworkConnectionProtocol
 -(void) setupNetwork
 {
-    self.concurrentChatDelegateQueue = dispatch_queue_create("com.nc.networkteset.wifitcp",DISPATCH_QUEUE_CONCURRENT);
+    self.concurrentChatDelegateQueue = dispatch_queue_create("com.nc.networkteset.wifiudp",DISPATCH_QUEUE_CONCURRENT);
 }
 
 -(void) startHost
 {
     isHost = YES;
-    self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:self.concurrentChatDelegateQueue];
+    self.socket = [[GCDAsyncUdpSocket alloc] initWithDelegate:self delegateQueue:self.concurrentChatDelegateQueue];
     
     NSError *error = nil;
-    if ([self.socket acceptOnPort:0 error:&error]) {
-        self.service = [[NSNetService alloc] initWithDomain:@"local." type:@"_ncnetworkteset._tcp." name:@"WiFiChatServer" port:[self.socket localPort]];
+    if ([self.socket bindToPort:0 error:&error]) {
+        self.service = [[NSNetService alloc] initWithDomain:@"local." type:@"_ncnetworkudpteset._udp." name:@"WiFiUdpChatServer" port:[self.socket localPort]];
         
         [self.service setDelegate:self];
         
@@ -62,65 +60,57 @@
 -(void) startClient
 {
     isHost = NO;
-    
     if (self.services) {
         [self.services removeAllObjects];
     } else {
         self.services = [[NSMutableArray alloc] init];
     }
     
-    self.socket = nil;
-    
     self.serviceBrowser = [[NSNetServiceBrowser alloc] init];
     
     [self.serviceBrowser setDelegate:self];
-    [self.serviceBrowser searchForServicesOfType:@"_ncnetworkteset._tcp." inDomain:@"local."];
+    [self.serviceBrowser searchForServicesOfType:@"_ncnetworkudpteset._udp." inDomain:@"local."];
 }
 
 -(void)sendDataToAll : (NSData*)data reliableFlag:(BOOL)isReliable
 {
     if (isHost) {
-        for (GCDAsyncSocket* socket in self.clientSockets) {
-            [self sendData:socket data:data];
+        for (NSData* address in self.clientAddresses) {
+            [self sendData:data toAddress:address];
         }
     }
 }
 
 -(void)sendDataToHost : (NSData*)data reliableFlag:(BOOL)isReliable
 {
-    if (!isHost) {
-        [self sendData:self.socket data:data];
+    if (!isHost && self.socket && self.socket.isConnected) {
+        [self sendData:data toAddress:nil];
     }
 }
 
 -(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable
 {
     if (isHost) {
-        for (GCDAsyncSocket* socket in self.clientSockets) {
-            if ([socket.connectedHost isEqualToString:peerName]) {
-                [self sendData:socket data:data];
-            }
-        }
+        [self sendData:data toAddress:peerName];
     }
 }
 
 -(int) connectionCount
 {
     if (isHost) {
-        return (self.clientSockets == nil) ? 0 : [self.clientSockets count];
+        return (self.clientAddresses == nil)?0:[self.clientAddresses count];
     } else {
-        if (self.socket) {
-            return 1;
-        }
+        return (self.socket ==  nil) ? 0 : self.socket.isConnected;
     }
-    return 0;
 }
 
 -(void) stopSearch
 {
     if (self.service) {
         [self.service stop];
+        self.service = nil;
     }
+    
 }
 
 -(void) stopAdvertise
@@ -130,25 +120,20 @@
 
 -(void) disconnect
 {
-    CCLOG(@"function disconnect");
-    if (isHost) {
-        if (self.clientSockets) {
-            for (GCDAsyncSocket* socket in self.clientSockets)
-            {
-                [socket disconnect];
-                socket.delegate = nil;
-            }
+    if (self.socket) {
+        if (!isHost) {
+            [self sendData:[@"disconnect" dataUsingEncoding:NSUTF8StringEncoding] toAddress:nil];
         }
-    } else {
-        if (self.socket) {
-            [self.socket disconnect];
-            self.socket.delegate = nil;
-            self.socket = nil;
-        }
+        [self.socket pauseReceiving];
+        [self.socket close];
+        [self.socket setDelegate:nil delegateQueue:nil];
+        self.socket = nil;
     }
+    
+    [self stopSearch];
+    [self stopServiceBrowser];
 }
 // end implement NetworkConnectionProtocol
-
 -(void)broadcastConnectionInfo:(NSString*)message
 {
     NSDictionary *userInfo = @{ @"connectionInfo": message};
@@ -160,16 +145,32 @@
     });
 }
 
--(void)sendData:(GCDAsyncSocket*) socket data:(NSData*)data
+-(void)sendData:(NSData*)data toAddress:(NSData*)address
 {
+    /*
     NSMutableData *buffer = [[NSMutableData alloc] init];
     HEADER_TYPE dataLength = 0;
     
     dataLength = (HEADER_TYPE)[data length];
     [buffer appendBytes:&dataLength length:sizeof(HEADER_TYPE)];
-    [buffer appendBytes:[data bytes] length:[data length]];
+    [buffer appendBytes:[data bytes] length:[data length]];*/
     
-    [socket writeData:buffer withTimeout:-1.0 tag:TAG_PING_RESPONSE];
+    if (isHost) {
+        [self.socket sendData:data toAddress:address withTimeout:-1 tag:TAG_PING_RESPONSE];
+    } else {
+        [self.socket sendData:data withTimeout:-1 tag:TAG_PING_RESPONSE];
+    }
+}
+
+- (void)udpSocket:(GCDAsyncUdpSocket *)sock didSendDataWithTag:(long)tag
+{
+
+}
+
+- (void)udpSocket:(GCDAsyncUdpSocket *)sock didNotSendDataWithTag:(long)tag dueToError:(NSError *)error
+{
+    CCLOG(@"UDP Socket send data failed with error : %@", error);
+    
 }
 
 /***********************************************************************/
@@ -182,6 +183,16 @@
     NSString* publishMsg = [NSString stringWithFormat:@"\nBonjour Service Published: domain(%@) type(%@) name(%@) port(%i)", [service domain], [service type], [service name], (int)[service port]];
     CCLOG(@"%@", publishMsg);
     [self broadcastConnectionInfo:publishMsg];
+    
+    NSError *error;
+    if (![self.socket beginReceiving:&error])
+    {
+        [self.socket close];
+        NSString *err = [NSString stringWithFormat:@"Error starting server (recv): %@", error];
+        CCLOG(@"%@", err);
+        [self broadcastConnectionInfo:err];
+        return;
+    }
 }
 
 - (void)netService:(NSNetService *)service didNotPublish:(NSDictionary<NSString *,NSNumber *> *)errorDict
@@ -192,76 +203,60 @@
 }
 // end NSNetServiceDelegate
 
-// begin GCDAsyncSocketDelegate
-- (void)socket:(GCDAsyncSocket *)socket didAcceptNewSocket:(GCDAsyncSocket *)newSocket {
-    if (self.clientSockets == nil) {
-        self.clientSockets = [[NSMutableArray alloc]init];
-    }
-    [self.clientSockets addObject:newSocket];
-    
-    NSString *infoMsg = [NSString stringWithFormat:@"\nAccepted New Socket from %@:%hu", [newSocket connectedHost], [newSocket connectedPort]];
-    CCLOG(@"%@", infoMsg);
-    [self broadcastConnectionInfo:infoMsg];
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
-                                                            object:nil
-                                                          userInfo:nil];
-    });
-    
-    // Read Data from Socket
-    //[newSocket readDataWithTimeout:-1 tag:0];
-    [newSocket readDataToLength:sizeof(HEADER_TYPE) withTimeout:-1.0 tag:TAG_HEAD];
-}
-
-- (void)socketDidDisconnect:(GCDAsyncSocket *)socket withError:(NSError *)error {
-    CCLOG(@"socketDidDisconnect error : %@", error);
-    
-    socket.delegate = nil;
-
-    if (isHost) {
-        [self.clientSockets removeObject:socket];
-    } else {
-        self.socket = nil;
-    }
-    
-    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nsocketDidDisconnect error : %@", error.localizedDescription]];
-
-}
-
-- (void)socket:(GCDAsyncSocket *)socket didReadData:(NSData *)data withTag:(long)tag
+// begin GCDAsyncUdpSocketDelegate
+- (void)udpSocket:(GCDAsyncUdpSocket *)sock didReceiveData:(NSData *)data fromAddress:(NSData *)address withFilterContext:(id)filterContext
 {
-    if (tag == TAG_HEAD) {
-        CFTimeInterval t = CACurrentMediaTime() * 1000;
-        if (receiveTimeDict == nil) {
-            receiveTimeDict = [[NSMutableDictionary alloc]init];
+    CFTimeInterval t = CACurrentMediaTime() * 1000;
+    NSNumber *receiveTime = [NSNumber numberWithDouble:t];
+    BOOL shouldDispatchData = YES;
+    
+    // init remote address at first time at host side
+    if (isHost) {
+        if (self.clientAddresses == nil) {
+            self.clientAddresses = [[NSMutableArray alloc] init];
         }
-        receiveTimeDict[socket.connectedHost] = [NSNumber numberWithDouble:t];
-        
-        HEADER_TYPE bodyLength = 0;
-        memcpy(&bodyLength, [data bytes], sizeof(HEADER_TYPE));
-        [socket readDataToLength:bodyLength withTimeout:30.0 tag:TAG_BODY];
-    } else if (tag == TAG_BODY) {
+        if (![self.clientAddresses containsObject:address]) {
+            [self.clientAddresses addObject:address];
+            
+            NSString* connectionInfo = [NSString stringWithFormat:@"\nconnect with %@", address];
+            CCLOG(@"%@", connectionInfo);
+            [self broadcastConnectionInfo:connectionInfo];
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
+                                                                    object:nil
+                                                                  userInfo:nil];
+            });
+            
+            NSString *info = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            if (info && [info isEqualToString:@"connect"]) {
+                shouldDispatchData = NO;
+            }
+        } else {
+            NSString *info = [[NSString alloc] initWithData:data encoding:NSUTF8StringEncoding];
+            if (info && [info isEqualToString:@"disconnect"]) {
+                shouldDispatchData = NO;
+                [self.clientAddresses removeObject:address];
+                [self broadcastConnectionInfo:@""];
+            }
+        }
+    }
+    
+    if (shouldDispatchData) {
+        //[GCDAsyncUdpSocket getHost:&host port:&port fromAddress:address];
         NSDictionary *userInfo = @{ @"data": data,
-                                    @"peerName": [socket connectedHost],
-                                    @"time": receiveTimeDict[socket.connectedHost]};
-
+                                    @"peerName": address,
+                                    @"time": receiveTime};
+        
         dispatch_async(dispatch_get_main_queue(), ^{
             
             [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
                                                                 object:nil
                                                               userInfo:userInfo];
         });
-        // keep reading
-        [socket readDataToLength:sizeof(HEADER_TYPE) withTimeout:-1.0 tag:TAG_HEAD];
     }
 }
-
-- (void)socket:(GCDAsyncSocket *)socket didWriteDataWithTag:(long)tag
-{
-    
-}
-// end GCDAsyncSocketDelegate
+// end GCDAsyncUdpSocketDelegate
 
 /***********************************************************************/
 /*                          CLIENT FUNCTIONS                           */
@@ -310,13 +305,13 @@
         //sort
         [self.services sortUsingDescriptors:@[[NSSortDescriptor sortDescriptorWithKey:@"name" ascending:YES]]];
         
-        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"self.name == %@", @"WiFiChatServer"];
+        NSPredicate *predicate = [NSPredicate predicateWithFormat:@"self.name == %@", @"WiFiUdpChatServer"];
         NSArray *filteredArray = [self.services filteredArrayUsingPredicate:predicate];
         if ([filteredArray count] == 1) {
             NSNetService *service = [filteredArray objectAtIndex:0];
             [service setDelegate:self];
             [service resolveWithTimeout:30.0];
-                        
+            
             NSString* info = [NSString stringWithFormat:@"\nfind server service name : %@  address : %@\nstart to resolve...", service.name, service.hostName];
             
             CCLOG(@"%@", info);
@@ -360,7 +355,7 @@
     NSArray *addresses = [[service addresses] mutableCopy];
     
     if (!self.socket || ![self.socket isConnected]) {
-        self.socket = [[GCDAsyncSocket alloc] initWithDelegate:self delegateQueue:self.concurrentChatDelegateQueue];
+        self.socket = [[GCDAsyncUdpSocket alloc] initWithDelegate:self delegateQueue:self.concurrentChatDelegateQueue];
         
         while (!_isConnected && [addresses count]) {
             NSData *address = [addresses objectAtIndex:0];
@@ -378,12 +373,20 @@
     
     return _isConnected;
 }
-// end NSNetServiceDelegate
 
-// begin GCDAsyncSocketDelegate
-- (void)socket:(GCDAsyncSocket *)socket didConnectToHost:(NSString *)host port:(uint16_t)port
+- (void)udpSocket:(GCDAsyncUdpSocket *)sock didConnectToAddress:(NSData *)address
 {
-    NSString *info = [NSString stringWithFormat:@"\nSocket Did Connect to Host: %@ Port: %hu", host, port];
+    CCLOG(@"client socket equa to original? %@", [self.socket isEqual:sock] ? @"YES" : @"NO" );
+    self.socket = sock;
+    NSError *error;
+    if (![self.socket beginReceiving:&error])
+    {
+        [self.socket close];
+        CCLOG(@"Error starting server (recv): %@", error);
+        return;
+    }
+    
+    NSString *info = [NSString stringWithFormat:@"\nSocket Did Connect to Host: %@", address];
     CCLOG(@"%@", info);
     [self broadcastConnectionInfo:info];
     
@@ -393,8 +396,23 @@
                                                           userInfo:nil];
     });
     
-    [self.socket readDataToLength:sizeof(HEADER_TYPE) withTimeout:-1.0 tag:0];
+    // send garbage data to let the server know this client
+    [self.socket sendData:[@"connect" dataUsingEncoding:NSUTF8StringEncoding] withTimeout:-1 tag:0];
 }
-// end GCDAsyncSocketDelegate
 
+- (void)udpSocket:(GCDAsyncUdpSocket *)sock didNotConnect:(NSError *)error
+{
+    NSString *info = [NSString stringWithFormat:@"\nConnect to server failed : %@", error];
+    CCLOG(@"%@", info);
+    [self broadcastConnectionInfo:info];
+}
+
+- (void)udpSocketDidClose:(GCDAsyncUdpSocket *)sock withError:(NSError *)error
+{
+    if (self.socket == sock) {
+        self.socket = nil;
+        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nsocketDidDisconnect error : %@", error.localizedDescription]];
+    }
+}
+// end NSNetServiceDelegate
 @end

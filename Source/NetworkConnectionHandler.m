@@ -35,7 +35,7 @@
     CCLOG(@"function 'sendDataToHost' is not implemented by current network type!!!");
 }
 
--(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable
+-(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable
 {
     CCLOG(@"function 'sendData toPeer' is not implemented by current network type!!!");
 }

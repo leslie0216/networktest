@@ -11,6 +11,7 @@
 #import "MPCHandler.h"
 #import "BluetoothHandler.h"
 #import "WiFiTCPHandler.h"
+#import "WiFiUDPHandler.h"
 
 @implementation NetworkConnectionWrapper
 {
@@ -57,6 +58,10 @@ static NetworkConnectionWrapper *_sharedWrapper = nil;
             break;
         case WIFI_TCP:
             handler = [[WiFiTCPHandler alloc] init];
+            break;
+        case WIFI_UDP:
+            handler = [[WiFiUDPHandler alloc] init];
+            break;
         default:
             break;
     }
@@ -83,7 +88,7 @@ static NetworkConnectionWrapper *_sharedWrapper = nil;
     [handler sendDataToHost:data reliableFlag:isReliable];
 }
 
--(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable
+-(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable
 {
     [handler sendData:data toPeer:peerName reliableFlag:isReliable];
 }
@@ -105,6 +110,7 @@ static NetworkConnectionWrapper *_sharedWrapper = nil;
 -(void)disconnect
 {
     [handler disconnect];
+    handler = nil;
 }
 
 @end

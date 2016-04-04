@@ -15,7 +15,7 @@
 -(void) startClient;
 -(void)sendDataToAll : (NSData*)data reliableFlag:(BOOL)isReliable;
 -(void)sendDataToHost : (NSData*)data reliableFlag:(BOOL)isReliable;
--(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable;
+-(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable;
 -(int) connectionCount;
 -(void) stopSearch;
 -(void) stopAdvertise;

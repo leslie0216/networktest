@@ -131,6 +131,9 @@
             btnMode.enabled = YES;
         }
     } else {
+        if (isPing) {
+            [self stopPing:NO];
+        }
         lbConnectionStatus.string = @"not connected";
         btnPing.enabled = NO;
         if (btnMode.visible) {
@@ -149,6 +152,11 @@
     NSData *data = [[notification userInfo] objectForKey:@"data"];
     
     PingMessage *message = [[PingMessage alloc] initWithData:data error:nil];
+    if (message == nil) {
+        CCLOG(@"Invalid data received!!!");
+        return;
+    }
+    
     if (message.messageType == PingMessage_MsgType_Response) {
         NSString *token = message.token;
         
@@ -212,7 +220,7 @@
         }
         
         
-        CCLOG(@"send response with token : %@ and local response time : %f", message.token, packet.responseTime);
+        CCLOG(@"send response to %@ with token : %@ and local response time : %f", [[notification userInfo] objectForKey:@"peerName"], message.token, packet.responseTime);
     }
 }
 

@@ -98,9 +98,9 @@
     }
 }
 
--(void)sendData : (NSData*)data toPeer:(NSString*)peerName reliableFlag:(BOOL)isReliable
+-(void)sendData : (NSData*)data toPeer:(id)peerName reliableFlag:(BOOL)isReliable
 {
-    PeripheralInfo *info = self.discoveredPeripherals[peerName];
+    PeripheralInfo *info = self.discoveredPeripherals[(NSString*)peerName];
     if (info) {
         [info.peripheral writeValue:data forCharacteristic:info.writeCharacteristic type:CBCharacteristicWriteWithResponse];
     }
@@ -135,6 +135,7 @@
 -(void) disconnect
 {
     if (isHost) {
+        [self stopSearch];
         NSEnumerator *enmuerator = [self.discoveredPeripherals objectEnumerator];
         
         for (PeripheralInfo *info in enmuerator) {
@@ -158,7 +159,7 @@
             }
         }
     } else {
-        
+        [self stopAdvertise];
     }
 }
 // end implement NetworkConnectionProtocol
@@ -379,7 +380,8 @@
 
 - (void)peripheral:(CBPeripheral *)peripheral didWriteValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
 {
-    CCLOG(@"didWriteValueForCharacteristic to %@", peripheral.name);
+    PeripheralInfo *info = self.discoveredPeripherals[peripheral.identifier.UUIDString];
+    CCLOG(@"didWriteValueForCharacteristic to %@", info.name);
     
     if (error)
     {
