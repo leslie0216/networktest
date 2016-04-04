@@ -34,10 +34,16 @@
 {
     CCButton *btnPing;
     CCButton *btnMode;
+    CCButton *btnPingMode;
+    CCButton *btnUp;
+    CCButton *btnDown;
     CCLabelTTF *lbConnectionStatus;
     CCLabelTTF *lbNetworkMode;
     CCLabelTTF *lbPingInfo;
     CCLabelTTF *lbIsHost;
+    CCLabelTTF *lbSendMode;
+    CCLabelTTF *lbBatchInterval;
+    CCLabelTTF *lbInterval;
     
     NetworkConnectionWrapper* networkWrapper;
     
@@ -48,6 +54,23 @@
     //MPCLogger *myLog;
     NSMutableDictionary *pingDict;
     unsigned long count;
+    CFTimeInterval batchInterval;
+}
+
+-(void)onBtnPingModeClick
+{
+    if ([btnPingMode.title isEqualToString:@"Ping-Pong Test"]) {
+        btnPingMode.title = @"Batch Test";
+        [self toggleBatchUI:YES];
+    } else {
+        btnPingMode.title = @"Ping-Pong Test";
+        [self toggleBatchUI:NO];
+    }
+}
+
+-(BOOL)isBatchTest
+{
+    return [btnPingMode.title isEqualToString:@"Batch Test"] ;
 }
 
 -(void)onBtnPingClicked
@@ -71,28 +94,29 @@
     
     lbIsHost.string = [networkWrapper isHost] ? @"Yes" : @"No";
     lbPingInfo.string = @"";
+    btnPingMode.title = @"Ping-Pong Test";
+    [self toggleBatchUI:NO];
+    
     
     switch ([networkWrapper networkType]) {
         case MPC:
             isReliable = YES;
+            lbSendMode.visible = YES;
             btnMode.visible = YES;
             btnMode.enabled = YES;
             btnMode.title = @"Reliable mode";
             lbNetworkMode.string = @"Mulitipeer Connectivity";
             break;
         case BLUETOOTH:
-            btnMode.visible = NO;
-            btnMode.enabled = NO;
+            [self disableSendMode];
             lbNetworkMode.string = @"Bluetooth";
             break;
         case WIFI_TCP:
-            btnMode.visible = NO;
-            btnMode.enabled = NO;
+            [self disableSendMode];
             lbNetworkMode.string = @"WiFi TCP";
             break;
         case WIFI_UDP:
-            btnMode.visible = NO;
-            btnMode.enabled = NO;
+            [self disableSendMode];
             lbNetworkMode.string = @"WiFi UDP";
             break;
             
@@ -102,6 +126,9 @@
     
     [self updateConnectionStatus];
     
+    batchInterval = 0.1;
+    [self updateBatchIntervalLabel];
+    
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(peerChangedStateWithNotification:)
                                                  name:CONNECTION_STATE_CHANGED_NOTIFICATION
@@ -110,6 +137,47 @@
                                              selector:@selector(handleReceivedDataWithNotification:)
                                                  name:RECEIVED_DATA_NOTIFICATION
                                                object:nil];
+}
+
+-(void)toggleBatchUI:(BOOL)isVisible
+{
+    lbBatchInterval.visible = isVisible;
+    lbInterval.visible = isVisible;
+    btnUp.visible = isVisible;
+    btnUp.enabled = isVisible;
+    btnDown.visible = isVisible;
+    btnDown.enabled = isVisible;
+}
+
+-(void)onBtnUpClicked
+{
+    batchInterval += 0.1;
+    if (batchInterval > 1.0) {
+        batchInterval = 1.0;
+    }
+    [self updateBatchIntervalLabel];
+}
+
+-(void)onBtnDownClicked
+{
+    batchInterval -= 0.1;
+    if (batchInterval < 0.1) {
+        batchInterval = 0.1;
+    }
+    [self updateBatchIntervalLabel];
+}
+
+-(void)updateBatchIntervalLabel
+{
+    int intervalInMs = (int)(batchInterval * 1000.0);
+    lbBatchInterval.string = [NSString stringWithFormat:@"%d",intervalInMs];
+}
+
+-(void)disableSendMode
+{
+    lbSendMode.visible = NO;
+    btnMode.visible = NO;
+    btnMode.enabled = NO;
 }
 
 - (void)onExit
@@ -201,6 +269,10 @@
             } else {
                 lbPingInfo.string = [[NSString alloc]initWithFormat:@"current : %f\nreceived count : %lu\ntotal count : %lu\n", timeInterval, (unsigned long)[timerArray count], count];
             }
+            
+            if (![self isBatchTest]) {
+                [self doPing];
+            }
         }
     } else if (message.messageType == PingMessage_MsgType_Ping){
         PingMessage *packet = [[PingMessage alloc]init];
@@ -287,13 +359,25 @@
 }
 #endif
 
+-(void)toggleUIExceptPingBtn:(BOOL)isEnable
+{
+    if ([btnMode visible]) {
+        btnMode.enabled = isEnable;
+    }
+    
+    btnPingMode.enabled = isEnable;
+    
+    if ([self isBatchTest]) {
+        btnUp.enabled = isEnable;
+        btnDown.enabled = isEnable;
+    }
+}
+
 -(void)startPing
 {
     isPing = YES;
     btnPing.title = @"Stop Ping";
-    if ([btnMode visible]) {
-        btnMode.enabled = NO;
-    }
+    [self toggleUIExceptPingBtn:NO];
     
     if (timerArray == nil) {
         timerArray = [[NSMutableArray alloc] init];
@@ -310,11 +394,11 @@
 #ifdef LOG_ENABLE
     [self startLog];
 #endif
-    timer = [NSTimer scheduledTimerWithTimeInterval:1.0/10.0 // every 100ms
+    timer = [NSTimer scheduledTimerWithTimeInterval:batchInterval
                                              target:self
                                            selector:@selector(doPing)
                                            userInfo:nil
-                                            repeats:YES];
+                                            repeats:[self isBatchTest]];
 }
 
 -(void)stopPing : (BOOL)isExit
@@ -322,9 +406,7 @@
     [timer invalidate];
     isPing = NO;
     btnPing.title = @"Start Ping";
-    if ([btnMode visible]) {
-        btnMode.enabled = YES;
-    }
+    [self toggleUIExceptPingBtn:YES];
     
     if (!isExit) {
         // calculate loss rate, min/max time interval, standard deviation after .5s
