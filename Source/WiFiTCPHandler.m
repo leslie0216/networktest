@@ -12,7 +12,7 @@
 @interface WiFiTCPHandler()
 {
     BOOL isHost;
-    NSNumber *receiveTime;
+    NSMutableDictionary<NSString*, NSNumber*> *receiveTimeDict;
 }
 
 @property (nonatomic, strong) dispatch_queue_t concurrentChatDelegateQueue;
@@ -232,14 +232,18 @@
 {
     if (tag == TAG_HEAD) {
         CFTimeInterval t = CACurrentMediaTime() * 1000;
-        receiveTime = [NSNumber numberWithDouble:t];
+        if (receiveTimeDict == nil) {
+            receiveTimeDict = [[NSMutableDictionary alloc]init];
+        }
+        receiveTimeDict[socket.localHost] = [NSNumber numberWithDouble:t];
+        
         HEADER_TYPE bodyLength = 0;
         memcpy(&bodyLength, [data bytes], sizeof(HEADER_TYPE));
         [socket readDataToLength:bodyLength withTimeout:30.0 tag:TAG_BODY];
     } else if (tag == TAG_BODY) {
         NSDictionary *userInfo = @{ @"data": data,
                                     @"peerName": [socket localHost],
-                                    @"time": receiveTime};
+                                    @"time": receiveTimeDict[socket.localHost]};
 
         dispatch_async(dispatch_get_main_queue(), ^{
             
