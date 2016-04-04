@@ -54,6 +54,10 @@
     
     [self setupCocos2dWithOptions:cocos2dSetup];
     
+    CCDirector *director = [CCDirector sharedDirector];
+    //[director setAnimationInterval:1.0/60];
+    [director setDisplayStats:YES];
+    
     return YES;
 }
 

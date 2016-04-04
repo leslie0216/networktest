@@ -71,7 +71,6 @@
     
     lbIsHost.string = [networkWrapper isHost] ? @"Yes" : @"No";
     lbPingInfo.string = @"";
-    [self updateConnectionStatus];
     
     switch ([networkWrapper networkType]) {
         case MPC:
@@ -101,6 +100,8 @@
             break;
     }
     
+    [self updateConnectionStatus];
+    
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(peerChangedStateWithNotification:)
                                                  name:CONNECTION_STATE_CHANGED_NOTIFICATION
@@ -126,9 +127,15 @@
     if ([networkWrapper currentConnectionCount] > 0) {
         lbConnectionStatus.string = @"connected";
         btnPing.enabled = YES;
+        if (btnMode.visible) {
+            btnMode.enabled = YES;
+        }
     } else {
         lbConnectionStatus.string = @"not connected";
         btnPing.enabled = NO;
+        if (btnMode.visible) {
+            btnMode.enabled = NO;
+        }
     }
 }
 
@@ -327,6 +334,7 @@
     PingMessage* bufMsg = [[PingMessage alloc] init];
     
     NSString *currentPingToken = [[NSUUID UUID] UUIDString];
+    //NSString *currentPingToken = [NSString stringWithFormat:@"%lu", (count+1)];
     bufMsg.token = currentPingToken;
     bufMsg.isReliable = isReliable;
     bufMsg.messageType = PingMessage_MsgType_Ping;

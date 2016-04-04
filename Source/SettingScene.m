@@ -34,7 +34,7 @@
 
 -(void)switchToScene:(NSString *)sceneName
 {
-    CCScene *scene = [CCBReader loadAsScene:@"ConnectionScene"];
+    CCScene *scene = [CCBReader loadAsScene:sceneName];
     [[CCDirector sharedDirector] replaceScene:scene];
 }
 @end

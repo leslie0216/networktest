@@ -10,6 +10,7 @@
 #import "NetworkConnectionHandler.h"
 #import "MPCHandler.h"
 #import "BluetoothHandler.h"
+#import "WiFiTCPHandler.h"
 
 @implementation NetworkConnectionWrapper
 {
@@ -53,7 +54,9 @@ static NetworkConnectionWrapper *_sharedWrapper = nil;
             break;
         case BLUETOOTH:
             handler = [[BluetoothHandler alloc]init];
-            break;            
+            break;
+        case WIFI_TCP:
+            handler = [[WiFiTCPHandler alloc] init];
         default:
             break;
     }

@@ -63,6 +63,11 @@
 		927F61B9196C771E000F43EF /* iPhone@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = B71F590E188484E7003F4D28 /* iPhone@2x.png */; };
 		927F61BA196C771E000F43EF /* Default.png in Resources */ = {isa = PBXBuildFile; fileRef = B737896D180762440076A88C /* Default.png */; };
 		927F61BB196C771E000F43EF /* iPad-old.png in Resources */ = {isa = PBXBuildFile; fileRef = B71F5907188484E7003F4D28 /* iPad-old.png */; };
+		9B3866A41CAED01C006B742F /* WiFiTCPHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866A31CAED01C006B742F /* WiFiTCPHandler.m */; };
+		9B3866AC1CAED57D006B742F /* GCDAsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866A81CAED57D006B742F /* GCDAsyncSocket.m */; };
+		9B3866AD1CAED57D006B742F /* GCDAsyncUdpSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866A91CAED57D006B742F /* GCDAsyncUdpSocket.m */; };
+		9B3866B21CAED58A006B742F /* AsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866AE1CAED58A006B742F /* AsyncSocket.m */; };
+		9B3866B31CAED58A006B742F /* AsyncUdpSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866AF1CAED58A006B742F /* AsyncUdpSocket.m */; };
 		9B399C901CAAFB3E00F9F1EA /* SettingScene.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399C8F1CAAFB3E00F9F1EA /* SettingScene.m */; };
 		9B399C971CAAFB6F00F9F1EA /* ConnectionScene.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399C961CAAFB6F00F9F1EA /* ConnectionScene.m */; };
 		9B399C9A1CAAFBF700F9F1EA /* TestScene.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399C991CAAFBF700F9F1EA /* TestScene.m */; };
@@ -182,6 +187,16 @@
 		7BF6AF9F1A425F9800FFF9BA /* JavaFoundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaFoundation.framework; path = "../../../../../../../Library/SBAndroid/Application Support/Developer/Shared/Xcode/Platforms/Android.platform/Developer/SDKs/SBAndroid.sdk/System/Library/Frameworks/JavaFoundation.framework"; sourceTree = "<group>"; };
 		8392007918EE8E3300B6C429 /* GLKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = GLKit.framework; path = System/Library/Frameworks/GLKit.framework; sourceTree = SDKROOT; };
 		927F61BF196C771E000F43EF /* NetworkTest Android.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = "NetworkTest Android.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		9B3866A21CAED01C006B742F /* WiFiTCPHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = WiFiTCPHandler.h; path = Source/WiFiTCPHandler.h; sourceTree = "<group>"; };
+		9B3866A31CAED01C006B742F /* WiFiTCPHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = WiFiTCPHandler.m; path = Source/WiFiTCPHandler.m; sourceTree = "<group>"; };
+		9B3866A81CAED57D006B742F /* GCDAsyncSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GCDAsyncSocket.m; path = Source/CocoaAsyncSocket/GCD/GCDAsyncSocket.m; sourceTree = "<group>"; };
+		9B3866A91CAED57D006B742F /* GCDAsyncUdpSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = GCDAsyncUdpSocket.m; path = Source/CocoaAsyncSocket/GCD/GCDAsyncUdpSocket.m; sourceTree = "<group>"; };
+		9B3866AA1CAED57D006B742F /* GCDAsyncSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GCDAsyncSocket.h; path = Source/CocoaAsyncSocket/GCD/GCDAsyncSocket.h; sourceTree = "<group>"; };
+		9B3866AB1CAED57D006B742F /* GCDAsyncUdpSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GCDAsyncUdpSocket.h; path = Source/CocoaAsyncSocket/GCD/GCDAsyncUdpSocket.h; sourceTree = "<group>"; };
+		9B3866AE1CAED58A006B742F /* AsyncSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AsyncSocket.m; path = Source/CocoaAsyncSocket/RunLoop/AsyncSocket.m; sourceTree = "<group>"; };
+		9B3866AF1CAED58A006B742F /* AsyncUdpSocket.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = AsyncUdpSocket.m; path = Source/CocoaAsyncSocket/RunLoop/AsyncUdpSocket.m; sourceTree = "<group>"; };
+		9B3866B01CAED58A006B742F /* AsyncSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AsyncSocket.h; path = Source/CocoaAsyncSocket/RunLoop/AsyncSocket.h; sourceTree = "<group>"; };
+		9B3866B11CAED58A006B742F /* AsyncUdpSocket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AsyncUdpSocket.h; path = Source/CocoaAsyncSocket/RunLoop/AsyncUdpSocket.h; sourceTree = "<group>"; };
 		9B399C8E1CAAFB3E00F9F1EA /* SettingScene.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = SettingScene.h; path = Source/SettingScene.h; sourceTree = "<group>"; };
 		9B399C8F1CAAFB3E00F9F1EA /* SettingScene.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = SettingScene.m; path = Source/SettingScene.m; sourceTree = "<group>"; };
 		9B399C951CAAFB6F00F9F1EA /* ConnectionScene.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ConnectionScene.h; path = Source/ConnectionScene.h; sourceTree = "<group>"; };
@@ -487,6 +502,55 @@
 			name = libs;
 			sourceTree = "<group>";
 		};
+		9B38669F1CAECF78006B742F /* WiFiTCP */ = {
+			isa = PBXGroup;
+			children = (
+				9B3866A21CAED01C006B742F /* WiFiTCPHandler.h */,
+				9B3866A31CAED01C006B742F /* WiFiTCPHandler.m */,
+			);
+			name = WiFiTCP;
+			sourceTree = "<group>";
+		};
+		9B3866A51CAED547006B742F /* CocoaAsyncSocket */ = {
+			isa = PBXGroup;
+			children = (
+				9B3866A61CAED560006B742F /* GCD */,
+				9B3866A71CAED56B006B742F /* RunLoop */,
+			);
+			name = CocoaAsyncSocket;
+			sourceTree = "<group>";
+		};
+		9B3866A61CAED560006B742F /* GCD */ = {
+			isa = PBXGroup;
+			children = (
+				9B3866AA1CAED57D006B742F /* GCDAsyncSocket.h */,
+				9B3866A81CAED57D006B742F /* GCDAsyncSocket.m */,
+				9B3866AB1CAED57D006B742F /* GCDAsyncUdpSocket.h */,
+				9B3866A91CAED57D006B742F /* GCDAsyncUdpSocket.m */,
+			);
+			name = GCD;
+			sourceTree = "<group>";
+		};
+		9B3866A71CAED56B006B742F /* RunLoop */ = {
+			isa = PBXGroup;
+			children = (
+				9B3866AE1CAED58A006B742F /* AsyncSocket.m */,
+				9B3866AF1CAED58A006B742F /* AsyncUdpSocket.m */,
+				9B3866B01CAED58A006B742F /* AsyncSocket.h */,
+				9B3866B11CAED58A006B742F /* AsyncUdpSocket.h */,
+			);
+			name = RunLoop;
+			sourceTree = "<group>";
+		};
+		9B3866B41CAED5BB006B742F /* WiFi */ = {
+			isa = PBXGroup;
+			children = (
+				9B3866A51CAED547006B742F /* CocoaAsyncSocket */,
+				9B38669F1CAECF78006B742F /* WiFiTCP */,
+			);
+			name = WiFi;
+			sourceTree = "<group>";
+		};
 		9B399C9B1CAB051E00F9F1EA /* Scenes */ = {
 			isa = PBXGroup;
 			children = (
@@ -517,6 +581,7 @@
 		9B399CA41CAB199D00F9F1EA /* Networks */ = {
 			isa = PBXGroup;
 			children = (
+				9B3866B41CAED5BB006B742F /* WiFi */,
 				9BDDAFEC1CAC6CFD00AA9A53 /* Bluetooth */,
 				9B399CA51CAB19A500F9F1EA /* MultipeerConnectivity */,
 			);
@@ -972,7 +1037,9 @@
 			buildActionMask = 2147483647;
 			files = (
 				9B399CA81CAB19E100F9F1EA /* MPCHandler.m in Sources */,
+				9B3866AD1CAED57D006B742F /* GCDAsyncUdpSocket.m in Sources */,
 				9BDDAFF11CAC6EC800AA9A53 /* BluetoothHandler.m in Sources */,
+				9B3866A41CAED01C006B742F /* WiFiTCPHandler.m in Sources */,
 				9B399CCA1CAB1C6500F9F1EA /* GPBProtocolBuffers.m in Sources */,
 				9B399C971CAAFB6F00F9F1EA /* ConnectionScene.m in Sources */,
 				B73789871807631A0076A88C /* main.m in Sources */,
@@ -982,7 +1049,10 @@
 				9B399CA21CAB062B00F9F1EA /* NetworkConnectionHandler.m in Sources */,
 				9B399C9F1CAB05FE00F9F1EA /* NetworkConnectionWrapper.m in Sources */,
 				9B399CAD1CAB1C4B00F9F1EA /* Messages.pbobjc.m in Sources */,
+				9B3866AC1CAED57D006B742F /* GCDAsyncSocket.m in Sources */,
 				5B121038197487F2004C1E1D /* AppDelegate.m in Sources */,
+				9B3866B31CAED58A006B742F /* AsyncUdpSocket.m in Sources */,
+				9B3866B21CAED58A006B742F /* AsyncSocket.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
