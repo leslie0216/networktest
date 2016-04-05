@@ -422,7 +422,11 @@
         [self.peripheralManager addService:transferService];
         
         isConnectedToCentral = NO;
+#if __CC_PLATFORM_IOS
         NSString *name = [UIDevice currentDevice].name;
+#elif __CC_PLATFORM_MAC
+        NSString *name = [[NSHost currentHost] localizedName];
+#endif        
         [self.peripheralManager startAdvertising:@{CBAdvertisementDataLocalNameKey:name,CBAdvertisementDataServiceUUIDsKey:@[[CBUUID UUIDWithString:TRANSFER_SERVICE_UUID]]}];
         CCLOG(@"peripheralManager startAdvertising...");
     }

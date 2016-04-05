@@ -30,7 +30,12 @@
 {
     hostPeerID = nil;
     isHost = NO;
+    
+#if __CC_PLATFORM_IOS
     [self setupPeerWithDisplayName:[UIDevice currentDevice].name];
+#elif __CC_PLATFORM_MAC
+    [self setupPeerWithDisplayName:[[NSHost currentHost] localizedName]];
+#endif
     [self setupSession];
 }
 
