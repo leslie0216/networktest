@@ -239,12 +239,12 @@
             return;
         }
         
-        CCLOG(@"Receive time(r) = %f with token : %@ \n", receiveTime, token);
-        CCLOG(@"Start time(r) = %f with token : %@ \n", info.startTime, token);
-        CCLOG(@"ResponseTime = %f \n", message.responseTime);
+        //CCLOG(@"Receive time(r) = %f with token : %@ \n", receiveTime, token);
+        //CCLOG(@"Start time(r) = %f with token : %@ \n", info.startTime, token);
+        //CCLOG(@"ResponseTime = %f \n", message.responseTime);
         
         CFTimeInterval timeInterval = receiveTime - info.startTime - message.responseTime;
-        CCLOG(@"timeInterval : %f", timeInterval);
+        CCLOG(@"Receive ping response : token : %@, timeInterval : %f", token, timeInterval);
         if (timeInterval > 300) {
             CCLOG(@"!!!High latency!!!");
         } else if(timeInterval < 0) {
@@ -270,7 +270,7 @@
                 lbPingInfo.string = [[NSString alloc]initWithFormat:@"current : %f\nreceived count : %lu\ntotal count : %lu\n", timeInterval, (unsigned long)[timerArray count], count];
             }
             
-            if (![self isBatchTest]) {
+            if (![self isBatchTest] && info.totalCount == info.currentCount) {
                 [self doPing];
             }
         }
@@ -423,15 +423,15 @@
 {
     PingMessage* bufMsg = [[PingMessage alloc] init];
     
-    NSString *currentPingToken = [[NSUUID UUID] UUIDString];
-    //NSString *currentPingToken = [NSString stringWithFormat:@"%lu", (count+1)];
+    //NSString *currentPingToken = [[NSUUID UUID] UUIDString];
+    NSString *currentPingToken = [NSString stringWithFormat:@"%lu", (count+1)];
     bufMsg.token = currentPingToken;
     bufMsg.isReliable = isReliable;
     bufMsg.messageType = PingMessage_MsgType_Ping;
     NSData* msg = [bufMsg data];
     CFTimeInterval startTime = CACurrentMediaTime() * 1000;
     
-    CCLOG(@"Start time = %f with token : %@ package size : %lu, isReliable : %@\n", startTime, bufMsg.token, (unsigned long)[msg length], bufMsg.isReliable ? @"Yes" : @"No");
+    CCLOG(@"Start ping : time = %f with token : %@ package size : %lu, isReliable : %@\n", startTime, bufMsg.token, (unsigned long)[msg length], bufMsg.isReliable ? @"Yes" : @"No");
     
     if ([networkWrapper isHost]) {
         [networkWrapper sendDataToAll:msg reliableFlag:isReliable];

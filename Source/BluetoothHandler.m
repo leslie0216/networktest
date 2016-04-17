@@ -82,12 +82,12 @@
 -(void)sendDataToHost : (NSData*)data reliableFlag:(BOOL)isReliable
 {
     if (!isHost) {
-        BOOL didSend = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
+        BOOL didSent = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
         
         if (dataToSend == nil) {
             dataToSend = [[NSMutableArray alloc] init];
         }
-        if (!didSend) {
+        if (!didSent) {
             CCLOG(@"message didn't send, added to dataToSend queue.");
             if (![dataToSend containsObject:data]) {
                 [dataToSend addObject:data];
@@ -309,8 +309,9 @@
         [self.centralManager cancelPeripheralConnection:peripheral];
         return;
     }
-    
-    [self broadcastConnectionInfo:[NSString stringWithFormat:@"\ntransfer characteristics found in %@",info.name]];
+ 
+    BOOL isReadCharFound = NO;
+    BOOL isWriteCharFoud = NO;
     
     for (CBCharacteristic *characteristic in service.characteristics)
     {
@@ -318,20 +319,33 @@
         {
             [peripheral setNotifyValue:YES forCharacteristic:characteristic];
             info.readCharacteristic = characteristic;
+            isReadCharFound = YES;
         }
         
         if ([characteristic.UUID isEqual:[CBUUID UUIDWithString:TRANSFER_CHARACTERISTIC_MSG_FROM_CENTRAL_UUID]])
         {
             info.writeCharacteristic = characteristic;
+            isWriteCharFoud = YES;
         }
     }
     
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
-                                                            object:nil
-                                                          userInfo:nil];
-    });
-
+    CCLOG(@"peripheral maxResponse : %lu , maxNoResponse : %lu", (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse], (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithoutResponse]);
+    
+    NSString *msg = [NSString stringWithFormat:@"\nread characteristics found in %@ : %@\nwrite characteristics found in %@ : %@",info.name, isReadCharFound ? @"YES" : @"NO", info.name, isWriteCharFoud ? @"YES" : @"NO"];
+    CCLOG(@"%@", msg);
+    [self broadcastConnectionInfo:msg];
+    
+    if (isReadCharFound && isWriteCharFoud) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
+                                                                object:nil
+                                                              userInfo:nil];
+        });
+    } else {
+        [self broadcastConnectionInfo:[NSString stringWithFormat:@"\nfalied to find transfer characteristics in %@ error : %@", info.name, error]];
+        [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
+        [self.centralManager cancelPeripheralConnection:peripheral];
+    }
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateValueForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
@@ -369,10 +383,9 @@
         return;
     }
     
-    if (characteristic.isNotifying) {
-        CCLOG(@"Notification began on %@", characteristic);
-    } else {
-        [self broadcastConnectionInfo:nil];
+    if (error != nil) {
+        CCLOG(@"set notification falied : %@", error);
+        [self broadcastConnectionInfo:@""];
         [self.discoveredPeripherals removeObjectForKey:peripheral.identifier.UUIDString];
         [self.centralManager cancelPeripheralConnection:peripheral];
     }
@@ -434,7 +447,7 @@
 
 - (void)peripheralManager:(CBPeripheralManager *)peripheral central:(CBCentral *)central didSubscribeToCharacteristic:(CBCharacteristic *)characteristic
 {
-    CCLOG(@"didSubscribeToCharacteristic");
+    CCLOG(@"didSubscribeToCharacteristic central.maximumUpdateValueLength = %lu" , (unsigned long)central.maximumUpdateValueLength);
     if ([self.sendCharacteristic isEqual:characteristic]) {
         NSString *string = @"\nserver subscribed send characteristic";
         [self broadcastConnectionInfo:string];
