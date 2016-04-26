@@ -76,7 +76,6 @@
 		9B2C4D1F1CB41F1A0008FED7 /* GCDAsyncUdpSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866A91CAED57D006B742F /* GCDAsyncUdpSocket.m */; };
 		9B2C4D201CB41F1F0008FED7 /* AsyncUdpSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866AF1CAED58A006B742F /* AsyncUdpSocket.m */; };
 		9B2C4D211CB41F220008FED7 /* AsyncSocket.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866AE1CAED58A006B742F /* AsyncSocket.m */; };
-		9B2C4D2B1CB428990008FED7 /* libz.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B2C4D2A1CB428990008FED7 /* libz.dylib */; };
 		9B2C4D2D1CB4291C0008FED7 /* OpenCL.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B2C4D2C1CB4291C0008FED7 /* OpenCL.framework */; };
 		9B2C4D2F1CB429260008FED7 /* AppKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B2C4D2E1CB429260008FED7 /* AppKit.framework */; };
 		9B3866A41CAED01C006B742F /* WiFiTCPHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B3866A31CAED01C006B742F /* WiFiTCPHandler.m */; };
@@ -92,6 +91,8 @@
 		9B399CA81CAB19E100F9F1EA /* MPCHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CA61CAB19E100F9F1EA /* MPCHandler.m */; };
 		9B399CAD1CAB1C4B00F9F1EA /* Messages.pbobjc.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CAB1CAB1C4B00F9F1EA /* Messages.pbobjc.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		9B399CCA1CAB1C6500F9F1EA /* GPBProtocolBuffers.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CAE1CAB1C6500F9F1EA /* GPBProtocolBuffers.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		9B4EC7FF1CC99C1D0084E3C8 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B4EC7FE1CC99C1D0084E3C8 /* libsqlite3.dylib */; };
+		9B4EC8091CC99E810084E3C8 /* libz.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B4EC8081CC99E810084E3C8 /* libz.1.dylib */; };
 		9BDDAFF11CAC6EC800AA9A53 /* BluetoothHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BDDAFF01CAC6EC800AA9A53 /* BluetoothHandler.m */; };
 		B71F5911188484E7003F4D28 /* iPad-old.png in Resources */ = {isa = PBXBuildFile; fileRef = B71F5907188484E7003F4D28 /* iPad-old.png */; };
 		B71F5912188484E7003F4D28 /* iPad-old@2x.png in Resources */ = {isa = PBXBuildFile; fileRef = B71F5908188484E7003F4D28 /* iPad-old@2x.png */; };
@@ -261,6 +262,8 @@
 		9B399CC71CAB1C6500F9F1EA /* GPBUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBUtilities.h; path = Source/message/protobuf/GPBUtilities.h; sourceTree = "<group>"; };
 		9B399CC81CAB1C6500F9F1EA /* GPBWellKnownTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBWellKnownTypes.h; path = Source/message/protobuf/GPBWellKnownTypes.h; sourceTree = "<group>"; };
 		9B399CC91CAB1C6500F9F1EA /* GPBWireFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBWireFormat.h; path = Source/message/protobuf/GPBWireFormat.h; sourceTree = "<group>"; };
+		9B4EC7FE1CC99C1D0084E3C8 /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = ../../../../../../usr/lib/libsqlite3.dylib; sourceTree = "<group>"; };
+		9B4EC8081CC99E810084E3C8 /* libz.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.1.dylib; path = ../../../../../../usr/lib/libz.1.dylib; sourceTree = "<group>"; };
 		9BDDAFEF1CAC6EC800AA9A53 /* BluetoothHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BluetoothHandler.h; path = Source/BluetoothHandler.h; sourceTree = "<group>"; };
 		9BDDAFF01CAC6EC800AA9A53 /* BluetoothHandler.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = BluetoothHandler.m; path = Source/BluetoothHandler.m; sourceTree = "<group>"; };
 		B71F5907188484E7003F4D28 /* iPad-old.png */ = {isa = PBXFileReference; lastKnownFileType = image.png; name = "iPad-old.png"; path = "Icons/iPad-old.png"; sourceTree = "<group>"; };
@@ -310,7 +313,8 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9B2C4D2B1CB428990008FED7 /* libz.dylib in Frameworks */,
+				9B4EC8091CC99E810084E3C8 /* libz.1.dylib in Frameworks */,
+				9B4EC7FF1CC99C1D0084E3C8 /* libsqlite3.dylib in Frameworks */,
 				9B2C4D2F1CB429260008FED7 /* AppKit.framework in Frameworks */,
 				9B2C4D2D1CB4291C0008FED7 /* OpenCL.framework in Frameworks */,
 				7A97911719E631C6001FFC4D /* libcocos2d-mac.a in Frameworks */,
@@ -741,6 +745,8 @@
 		B77F1B3017B978D7009739AE /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
+				9B4EC8081CC99E810084E3C8 /* libz.1.dylib */,
+				9B4EC7FE1CC99C1D0084E3C8 /* libsqlite3.dylib */,
 				9B2C4D2E1CB429260008FED7 /* AppKit.framework */,
 				9B2C4D2C1CB4291C0008FED7 /* OpenCL.framework */,
 				9B2C4D2A1CB428990008FED7 /* libz.dylib */,

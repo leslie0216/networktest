@@ -328,10 +328,11 @@
             isWriteCharFoud = YES;
         }
     }
+#if __CC_PLATFORM_IOS
+    CCLOG(@"peripheral maxResponse : %lu , maxNoResponse : %lu", (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse], (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithoutResponse]);*/
+#endif
     
-    CCLOG(@"peripheral maxResponse : %lu , maxNoResponse : %lu", (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse], (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithoutResponse]);
-    
-    NSString *msg = [NSString stringWithFormat:@"\nread characteristics found in %@ : %@\nwrite characteristics found in %@ : %@",info.name, isReadCharFound ? @"YES" : @"NO", info.name, isWriteCharFoud ? @"YES" : @"NO"];
+    NSString *msg = [NSString stringWithFormat:@"\nread characteristics found in %@ : %@ with properties : %lu\nwrite characteristics found in %@ : %@ with properties : %lu",info.name, isReadCharFound ? @"YES" : @"NO", (unsigned long)info.readCharacteristic.properties, info.name, isWriteCharFoud ? @"YES" : @"NO", (unsigned long)info.writeCharacteristic.properties];
     CCLOG(@"%@", msg);
     [self broadcastConnectionInfo:msg];
     
