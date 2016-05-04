@@ -9,6 +9,9 @@
 #import "TestScene.h"
 #import "NetworkConnectionWrapper.h"
 #import "Messages.pbobjc.h"
+#import "NetworkLogger.h"
+
+#define LOG_ENABLE
 
 @interface PingInfo : NSObject
 @property(strong, nonatomic)NSString* token;
@@ -51,7 +54,7 @@
     NSTimer *timer;
     NSMutableArray *timerArray;
     BOOL isPing;
-    //MPCLogger *myLog;
+    NetworkLogger *myLog;
     NSMutableDictionary *pingDict;
     unsigned long count;
     CFTimeInterval batchInterval;
@@ -344,7 +347,7 @@
 -(void)startLog
 {
     if (myLog == nil) {
-        myLog = [[MPCLogger alloc]init];
+        myLog = [[NetworkLogger alloc]init];
     }
     
     [myLog newLogFile];

@@ -91,6 +91,7 @@
 		9B399CA81CAB19E100F9F1EA /* MPCHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CA61CAB19E100F9F1EA /* MPCHandler.m */; };
 		9B399CAD1CAB1C4B00F9F1EA /* Messages.pbobjc.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CAB1CAB1C4B00F9F1EA /* Messages.pbobjc.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
 		9B399CCA1CAB1C6500F9F1EA /* GPBProtocolBuffers.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B399CAE1CAB1C6500F9F1EA /* GPBProtocolBuffers.m */; settings = {COMPILER_FLAGS = "-fno-objc-arc"; }; };
+		9B4D4BB61CD9312A008567D9 /* NetworkLogger.m in Sources */ = {isa = PBXBuildFile; fileRef = 9B4D4BB41CD9312A008567D9 /* NetworkLogger.m */; };
 		9B4EC7FF1CC99C1D0084E3C8 /* libsqlite3.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B4EC7FE1CC99C1D0084E3C8 /* libsqlite3.dylib */; };
 		9B4EC8091CC99E810084E3C8 /* libz.1.dylib in Frameworks */ = {isa = PBXBuildFile; fileRef = 9B4EC8081CC99E810084E3C8 /* libz.1.dylib */; };
 		9BDDAFF11CAC6EC800AA9A53 /* BluetoothHandler.m in Sources */ = {isa = PBXBuildFile; fileRef = 9BDDAFF01CAC6EC800AA9A53 /* BluetoothHandler.m */; };
@@ -262,6 +263,8 @@
 		9B399CC71CAB1C6500F9F1EA /* GPBUtilities.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBUtilities.h; path = Source/message/protobuf/GPBUtilities.h; sourceTree = "<group>"; };
 		9B399CC81CAB1C6500F9F1EA /* GPBWellKnownTypes.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBWellKnownTypes.h; path = Source/message/protobuf/GPBWellKnownTypes.h; sourceTree = "<group>"; };
 		9B399CC91CAB1C6500F9F1EA /* GPBWireFormat.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GPBWireFormat.h; path = Source/message/protobuf/GPBWireFormat.h; sourceTree = "<group>"; };
+		9B4D4BB41CD9312A008567D9 /* NetworkLogger.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; name = NetworkLogger.m; path = Source/NetworkLogger.m; sourceTree = "<group>"; };
+		9B4D4BB51CD9312A008567D9 /* NetworkLogger.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NetworkLogger.h; path = Source/NetworkLogger.h; sourceTree = "<group>"; };
 		9B4EC7FE1CC99C1D0084E3C8 /* libsqlite3.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libsqlite3.dylib; path = ../../../../../../usr/lib/libsqlite3.dylib; sourceTree = "<group>"; };
 		9B4EC8081CC99E810084E3C8 /* libz.1.dylib */ = {isa = PBXFileReference; lastKnownFileType = "compiled.mach-o.dylib"; name = libz.1.dylib; path = ../../../../../../usr/lib/libz.1.dylib; sourceTree = "<group>"; };
 		9BDDAFEF1CAC6EC800AA9A53 /* BluetoothHandler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = BluetoothHandler.h; path = Source/BluetoothHandler.h; sourceTree = "<group>"; };
@@ -605,6 +608,8 @@
 			isa = PBXGroup;
 			children = (
 				9B399CA41CAB199D00F9F1EA /* Networks */,
+				9B4D4BB41CD9312A008567D9 /* NetworkLogger.m */,
+				9B4D4BB51CD9312A008567D9 /* NetworkLogger.h */,
 				9B399C9D1CAB05FE00F9F1EA /* NetworkConnectionWrapper.h */,
 				9B399C9E1CAB05FE00F9F1EA /* NetworkConnectionWrapper.m */,
 				9B399CA01CAB062B00F9F1EA /* NetworkConnectionHandler.h */,
@@ -1098,6 +1103,7 @@
 				9B3866A41CAED01C006B742F /* WiFiTCPHandler.m in Sources */,
 				9B399CCA1CAB1C6500F9F1EA /* GPBProtocolBuffers.m in Sources */,
 				9B399C971CAAFB6F00F9F1EA /* ConnectionScene.m in Sources */,
+				9B4D4BB61CD9312A008567D9 /* NetworkLogger.m in Sources */,
 				B73789871807631A0076A88C /* main.m in Sources */,
 				9B399C9A1CAAFBF700F9F1EA /* TestScene.m in Sources */,
 				9B399C901CAAFB3E00F9F1EA /* SettingScene.m in Sources */,

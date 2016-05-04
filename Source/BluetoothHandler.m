@@ -329,7 +329,7 @@
         }
     }
 #if __CC_PLATFORM_IOS
-    CCLOG(@"peripheral maxResponse : %lu , maxNoResponse : %lu", (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse], (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithoutResponse]);*/
+    CCLOG(@"peripheral maxResponse : %lu , maxNoResponse : %lu", (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse], (unsigned long)[peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithoutResponse]);
 #endif
     
     NSString *msg = [NSString stringWithFormat:@"\nread characteristics found in %@ : %@ with properties : %lu\nwrite characteristics found in %@ : %@ with properties : %lu",info.name, isReadCharFound ? @"YES" : @"NO", (unsigned long)info.readCharacteristic.properties, info.name, isWriteCharFoud ? @"YES" : @"NO", (unsigned long)info.writeCharacteristic.properties];
