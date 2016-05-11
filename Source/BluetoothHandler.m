@@ -28,7 +28,6 @@
 @interface BluetoothHandler()
 {
     BOOL isHost;
-    //MCPeerID *hostPeerID;
     
     // client
     BOOL isConnectedToCentral;
@@ -370,6 +369,9 @@
                                 @"peerName": peripheral.identifier.UUIDString,
                                 @"time": time};
     
+    CCLOG(@"centralManager receive data length %lu", characteristic.value.length);
+
+    
     dispatch_async(dispatch_get_main_queue(), ^{
         
         [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
@@ -488,7 +490,7 @@
     for (CBATTRequest *request in requests) {
         if ([request.characteristic.UUID isEqual:[CBUUID UUIDWithString:TRANSFER_CHARACTERISTIC_MSG_FROM_CENTRAL_UUID]]) {
             [peripheral respondToRequest:request    withResult:CBATTErrorSuccess];
-            
+            CCLOG(@"peripheralManager receive data length %u", request.value.length);
             NSDictionary *userInfo = @{ @"data": request.value,
                                         @"peerName": @"Central",
                                         @"time": time};

@@ -11,7 +11,7 @@
 #import "Messages.pbobjc.h"
 #import "NetworkLogger.h"
 
-#define LOG_ENABLE
+//#define LOG_ENABLE
 
 @interface PingInfo : NSObject
 @property(strong, nonatomic)NSString* token;
@@ -40,6 +40,7 @@
     CCButton *btnPingMode;
     CCButton *btnUp;
     CCButton *btnDown;
+    CCButton *btnLog;
     CCLabelTTF *lbConnectionStatus;
     CCLabelTTF *lbNetworkMode;
     CCLabelTTF *lbPingInfo;
@@ -58,6 +59,7 @@
     NSMutableDictionary *pingDict;
     unsigned long count;
     CFTimeInterval batchInterval;
+    BOOL isLogEnabled;
 }
 
 -(void)onBtnPingModeClick
@@ -89,6 +91,12 @@
 {
     isReliable = !isReliable;
     btnMode.title = isReliable ? @"Reliable mode" : @"Unreliable mode";
+}
+
+-(void)onBtnLogClick
+{
+    isLogEnabled = !isLogEnabled;
+    btnLog.title = isLogEnabled ? @"YES" : @"NO";
 }
 
 -(void)didLoadFromCCB
@@ -128,6 +136,9 @@
     }
     
     [self updateConnectionStatus];
+    
+    isLogEnabled = NO;
+    btnLog.title = @"NO";
     
     batchInterval = 0.1;
     [self updateBatchIntervalLabel];
@@ -196,7 +207,7 @@
 -(void)updateConnectionStatus
 {
     if ([networkWrapper currentConnectionCount] > 0) {
-        lbConnectionStatus.string = @"connected";
+        lbConnectionStatus.string = [NSString stringWithFormat:@"connected, count = %d", [networkWrapper currentConnectionCount]];
         btnPing.enabled = YES;
         if (btnMode.visible) {
             btnMode.enabled = YES;
@@ -260,12 +271,13 @@
         [info.timeIntervals addObject:numTime];
         info.currentCount += 1;
      
-#ifdef LOG_ENABLE
-        // log
-        NSString *log = [[NSString alloc]initWithFormat:@"%@, %f, %@, %lu, %f\n", [[notification userInfo] objectForKey:@"peerName"], timeInterval, token, info.number,CACurrentMediaTime() * 1000];
+        if (isLogEnabled) {
+            // log (target,timeInterval, token, number, isHost, timestamp)
+            NSString *log = [[NSString alloc]initWithFormat:@"%@, %f, %@, %lu, %d, %f\n", [[notification userInfo] objectForKey:@"peerName"], timeInterval, token, info.number, networkWrapper.isHost, CACurrentMediaTime() * 1000];
+            
+            [self writeLog:log];
+        }
         
-        [self writeLog:log];
-#endif
         if (isPing) {
             if ([networkWrapper networkType] == MPC) {
                 lbPingInfo.string = [[NSString alloc]initWithFormat:@"current : %f\nreceived count : %lu\ntotal count : %lu\nisReliable : %@\n", timeInterval, (unsigned long)[timerArray count], count, isReliable ? @"Yes" : @"No"];
@@ -295,7 +307,7 @@
         }
         
         
-        CCLOG(@"send response to %@ with token : %@ and local response time : %f", [[notification userInfo] objectForKey:@"peerName"], message.token, packet.responseTime);
+        CCLOG(@"send response to %@ with token : %@, length : %lu and local response time : %f", [[notification userInfo] objectForKey:@"peerName"], message.token, (unsigned long)message.token.length, packet.responseTime);
     }
 }
 
@@ -343,7 +355,6 @@
     [lbPingInfo setString:result];
 }
 
-#ifdef LOG_ENABLE
 -(void)startLog
 {
     if (myLog == nil) {
@@ -360,7 +371,6 @@
         [myLog write:log];
     }
 }
-#endif
 
 -(void)toggleUIExceptPingBtn:(BOOL)isEnable
 {
@@ -394,9 +404,11 @@
     } else {
         [pingDict removeAllObjects];
     }
-#ifdef LOG_ENABLE
-    [self startLog];
-#endif
+    
+    if (isLogEnabled) {
+        [self startLog];
+    }
+    
     timer = [NSTimer scheduledTimerWithTimeInterval:batchInterval
                                              target:self
                                            selector:@selector(doPing)
@@ -426,8 +438,8 @@
 {
     PingMessage* bufMsg = [[PingMessage alloc] init];
     
-    //NSString *currentPingToken = [[NSUUID UUID] UUIDString];
-    NSString *currentPingToken = [NSString stringWithFormat:@"%lu", (count+1)];
+    NSString *currentPingToken = [[NSUUID UUID] UUIDString];
+    //NSString *currentPingToken = [NSString stringWithFormat:@"%lu", (count+1)];
     bufMsg.token = currentPingToken;
     bufMsg.isReliable = isReliable;
     bufMsg.messageType = PingMessage_MsgType_Ping;

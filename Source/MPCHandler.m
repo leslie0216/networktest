@@ -253,6 +253,8 @@
     CFTimeInterval t = CACurrentMediaTime() * 1000;
     NSNumber *time = [NSNumber numberWithDouble:t];
     
+    CCLOG(@"didReceiveData size : %lu", (unsigned long)data.length);
+    
     NSDictionary *userInfo = @{ @"data": data,
                                 @"peerName": [peerID displayName],
                                 @"time": time};
