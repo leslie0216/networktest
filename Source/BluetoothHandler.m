@@ -81,19 +81,12 @@
 -(void)sendDataToHost : (NSData*)data reliableFlag:(BOOL)isReliable
 {
     if (!isHost) {
-        BOOL didSent = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
-        
         if (dataToSend == nil) {
-            dataToSend = [[NSMutableArray alloc] init];
+            dataToSend = [[NSMutableArray alloc]init];
         }
-        if (!didSent) {
-            CCLOG(@"message didn't send, added to dataToSend queue.");
-            if (![dataToSend containsObject:data]) {
-                [dataToSend addObject:data];
-            }
-        } else {
-            [dataToSend removeObject:data];
-        }
+        
+        [dataToSend addObject:data];
+        [self sendDataToHost];
     }
 }
 
@@ -478,9 +471,30 @@
 
 - (void)peripheralManagerIsReadyToUpdateSubscribers:(CBPeripheralManager *)peripheral
 {
-    for (NSData *data in dataToSend){
-        [self sendDataToHost:data reliableFlag:NO];
+    [self sendDataToHost];
+}
+
+- (void)sendDataToHost
+{
+    if (dataToSend == nil || dataToSend.count == 0) {
+        return;
     }
+    
+    NSMutableArray *tmp = [[NSMutableArray alloc]init];
+    
+    for (NSData *data in dataToSend){
+        BOOL didSent = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
+        
+        
+        if (!didSent) {
+            CCLOG(@"message didn't send, break.");
+            break;
+        } else {
+            [tmp addObject:data];
+        }
+    }
+    
+    [dataToSend removeObjectsInArray:tmp];
 }
 
 - (void)peripheralManager:(CBPeripheralManager *)peripheral didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests
