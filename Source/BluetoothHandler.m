@@ -23,15 +23,60 @@
 @synthesize name;
 @end
 
+@interface MessageData : NSObject
+@property(strong, nonatomic) NSString *deviceUUID;
+@property(strong, nonatomic) NSMutableData *data;
 
+-(instancetype)initWithDeviceUUID:(NSString*)uuid;
+-(void)addData:(NSData*)d;
+-(void)clearData;
+@end
+
+@implementation MessageData
+
+@synthesize deviceUUID;
+@synthesize data;
+
+-(instancetype)initWithDeviceUUID:(NSString *)uuid
+{
+    self = [super init];
+    
+    if (self) {
+        self.deviceUUID = uuid;
+        self.data = [[NSMutableData alloc]init];
+    }
+    
+    return self;
+}
+
+-(void)addData:(NSData *)d
+{
+    if (self.data == nil) {
+        self.data = [[NSMutableData alloc]init];
+    }
+    [self.data appendData:d];
+}
+
+-(void)clearData
+{
+    self.data = nil;
+}
+
+@end
+
+#define MSG_BUFFER_SIZE 3000
+//static char msgBuffer[MSG_BUFFER_SIZE];
 
 @interface BluetoothHandler()
 {
     BOOL isHost;
     
+    NSMutableArray *msgArray;
+    
     // client
     BOOL isConnectedToCentral;
     NSMutableArray *dataToSend;
+    CBCentral *host;
 }
 
 @property (nonatomic, strong) dispatch_queue_t concurrentChatDelegateQueue;
@@ -85,7 +130,12 @@
             dataToSend = [[NSMutableArray alloc]init];
         }
         
-        [dataToSend addObject:data];
+        NSArray *msgs = [self makeMsg:data byCapability:host.maximumUpdateValueLength - 2];
+        
+        for (NSData *msg in msgs) {
+            [dataToSend addObject:msg];
+        }
+        
         [self sendDataToHost];
     }
 }
@@ -165,6 +215,139 @@
                                                             object:nil
                                                           userInfo:userInfo];
     });
+}
+
+-(NSArray*)makeMsg:(NSData*)msg byCapability:(NSUInteger)capability {
+    CCLOG(@"makeMsg msg length = %lu, capability = %lu", msg.length, capability);
+    NSMutableArray *messageArray = [[NSMutableArray alloc]init];
+    
+    NSInteger limitation = capability -  2;
+    
+    if ([msg length] < limitation) {
+        [messageArray addObject:[self packMsg:msg andIsNew:YES andIsCompleted:YES]];
+    } else {
+        NSInteger index = 0;
+        
+        BOOL isComplete = NO;
+        
+        while (!isComplete) {
+            NSInteger amountToSend = [msg length] - index;
+            
+            if (amountToSend > limitation) {
+                amountToSend = limitation;
+                isComplete = NO;
+            } else {
+                isComplete = YES;
+            }
+            
+            NSData *chunk = [NSData dataWithBytes:msg.bytes + index length:amountToSend];
+            
+            [messageArray addObject:[self packMsg:chunk andIsNew:(index == 0) andIsCompleted:isComplete]];
+            
+            index += amountToSend;
+        }
+    }
+    
+    return messageArray;
+}
+
+-(void)processMsg:(NSData*)msg from:(NSString*)uuid atTime:(NSNumber*)time
+{
+    char* msgPointer = (char*)[msg bytes];
+    NSUInteger msgLength = [msg length];
+    BOOL isNewMsg = (BOOL)msgPointer[0];
+    BOOL isCompleted = (BOOL)msgPointer[1];
+    msgPointer++;
+    msgPointer++;
+    
+    NSData* msgData;
+    msgData = [NSData dataWithBytes:msgPointer length:msgLength-2];
+    
+    if (isNewMsg) {
+        if (isCompleted) {
+            NSDictionary *userInfo = @{ @"data": msgData,
+                                        @"peerName": uuid,
+                                        @"time": time};
+            
+            dispatch_async(dispatch_get_main_queue(), ^{
+                
+                [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
+                                                                    object:nil
+                                                                  userInfo:userInfo];
+            });
+        } else {
+            MessageData* data = [self getMessageData:uuid];
+            if (data != nil) {
+                [data clearData];
+            } else {
+                data = [[MessageData alloc]initWithDeviceUUID:uuid];
+            }
+            [data addData:msgData];
+            
+            if (msgArray == nil) {
+                msgArray = [[NSMutableArray alloc]init];
+            }
+            [msgArray addObject:data];
+        }
+    } else {
+        MessageData* data = [self getMessageData:uuid];
+        if (data != nil) {
+            [data addData:msgData];
+            if (isCompleted) {
+                NSDictionary *userInfo = @{ @"data": [data data],
+                                            @"peerName": uuid,
+                                            @"time": time};
+                
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    
+                    [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
+                                                                        object:nil
+                                                                      userInfo:userInfo];
+                });
+                
+                [data clearData];
+                [msgArray removeObject:data];
+            }
+        }
+        
+    }
+}
+
+-(MessageData*)getMessageData:(NSString*)uuid
+{
+    MessageData* data = nil;
+    if (msgArray != nil) {
+        for (MessageData* d in msgArray) {
+            if ([[d deviceUUID] isEqualToString:uuid]) {
+                data = d;
+                break;
+            }
+        }
+    }
+    
+    return data;
+}
+
+
+-(NSData*)packMsg:(NSData*)msg andIsNew:(BOOL)isNewMsg andIsCompleted:(BOOL)isCompleted{
+    NSUInteger len = [msg length];
+    char targetBuffer[len+2];
+    char* target = targetBuffer;
+    targetBuffer[0] = isNewMsg;
+    target++;
+    targetBuffer[1] = isCompleted;
+    target++;
+
+    if(msg == nil) {
+        // this message has no content
+        //return [NSData dataWithBytesNoCopy:msgBuffer length:2 freeWhenDone:NO];
+        return [NSData dataWithBytes:targetBuffer length:2];
+    }
+
+    memcpy(target, [msg bytes], len);
+    
+    //return [NSData dataWithBytesNoCopy:msgBuffer length:len+2 freeWhenDone:NO];
+    return [NSData dataWithBytes:targetBuffer length:len+2];
 }
 
 /***********************************************************************/
@@ -357,20 +540,10 @@
     if (![characteristic isEqual:info.readCharacteristic]) {
         return;
     }
+    
+    //CCLOG(@"centralManager receive data length %u", characteristic.value.length);
    
-    NSDictionary *userInfo = @{ @"data": characteristic.value,
-                                @"peerName": peripheral.identifier.UUIDString,
-                                @"time": time};
-    
-    CCLOG(@"centralManager receive data length %lu", characteristic.value.length);
-
-    
-    dispatch_async(dispatch_get_main_queue(), ^{
-        
-        [[NSNotificationCenter defaultCenter] postNotificationName:RECEIVED_DATA_NOTIFICATION
-                                                            object:nil
-                                                          userInfo:userInfo];
-    });
+    [self processMsg:characteristic.value from:peripheral.identifier.UUIDString atTime:time];
 }
 
 - (void)peripheral:(CBPeripheral *)peripheral didUpdateNotificationStateForCharacteristic:(CBCharacteristic *)characteristic error:(NSError *)error
@@ -450,6 +623,8 @@
         
         isConnectedToCentral = YES;
         
+        host = central;
+        
         dispatch_async(dispatch_get_main_queue(), ^{
             [[NSNotificationCenter defaultCenter] postNotificationName:SERVER_CLIENT_CONNECTION_DONE_NOTIFICATION
                                                                 object:nil
@@ -464,6 +639,7 @@
     if ([self.sendCharacteristic isEqual:characteristic]) {
         NSString *string = @"\nserver subscribed send characteristic";
         isConnectedToCentral = NO;
+        host = nil;
         [self broadcastConnectionInfo:string];
     }
 
@@ -494,7 +670,7 @@
         }
     }
     
-    [dataToSend removeObjectsInArray:tmp];
+    [dataToSend removeObjectsInRange:(NSRange){0, [tmp count]}];
 }
 
 - (void)peripheralManager:(CBPeripheralManager *)peripheral didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests
