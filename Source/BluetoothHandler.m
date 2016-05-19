@@ -83,6 +83,8 @@
 }
 
 @property (nonatomic, strong) dispatch_queue_t concurrentChatDelegateQueue;
+@property (nonatomic, strong) dispatch_queue_t serialDataSendingQueue;
+
 
 // server properties
 @property (strong, nonatomic) CBCentralManager *centralManager;
@@ -101,6 +103,7 @@
 -(void) setupNetwork
 {
     self.concurrentChatDelegateQueue = dispatch_queue_create("com.nc.networkteset.cb",DISPATCH_QUEUE_CONCURRENT);
+    self.serialDataSendingQueue = dispatch_queue_create("com.nc.networkteset.cb.data",DISPATCH_QUEUE_SERIAL);
 }
 
 -(void) startHost
@@ -126,11 +129,14 @@
         NSEnumerator *enmuerator = [self.discoveredPeripherals objectEnumerator];
         for (PeripheralInfo *info in enmuerator) {
             NSArray *msgs = [self makeMsg:data byCapability:[info.peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse]];
-            for (NSData *msg in msgs) {
-                MessageData *msgData = [[MessageData alloc]initWithDeviceUUID:info.peripheral.identifier.UUIDString];
-                [msgData addData:msg];
-                [hostDataToSend addObject:msgData];
-            }
+            
+            dispatch_async(self.serialDataSendingQueue, ^{
+                for (NSData *msg in msgs) {
+                    MessageData *msgData = [[MessageData alloc]initWithDeviceUUID:info.peripheral.identifier.UUIDString];
+                    [msgData addData:msg];
+                    [hostDataToSend addObject:msgData];
+                }
+            });
         }
         
         [self sendDataToClients];
@@ -146,12 +152,15 @@
         }
 
         NSArray *msgs = [self makeMsg:data byCapability:[info.peripheral maximumWriteValueLengthForType: CBCharacteristicWriteWithResponse]];
-        for (NSData *msg in msgs) {
-            MessageData *msgData = [[MessageData alloc]initWithDeviceUUID:info.peripheral.identifier.UUIDString];
-            [msgData addData:msg];
-            [hostDataToSend addObject:msgData];
-        }
         
+        dispatch_async(self.serialDataSendingQueue, ^{
+            for (NSData *msg in msgs) {
+                MessageData *msgData = [[MessageData alloc]initWithDeviceUUID:info.peripheral.identifier.UUIDString];
+                [msgData addData:msg];
+                [hostDataToSend addObject:msgData];
+            }
+        });
+    
         [self sendDataToClients];
     }
 }
@@ -165,10 +174,12 @@
         
         NSArray *msgs = [self makeMsg:data byCapability:host.maximumUpdateValueLength];
         
-        for (NSData *msg in msgs) {
-            [dataToSend addObject:msg];
-        }
-        
+        dispatch_async(self.serialDataSendingQueue, ^{
+            for (NSData *msg in msgs) {
+                [dataToSend addObject:msg];
+            }
+        });
+      
         [self sendDataToHost];
     }
 }
@@ -600,19 +611,20 @@
 
 -(void)sendDataToClients
 {
-    
-    if (hostDataToSend == nil || hostDataToSend.count == 0) {
-        return;
-    }
-    
-    for (MessageData *data in hostDataToSend){
-        PeripheralInfo *info = self.discoveredPeripherals[[data deviceUUID]];
-        if (info != nil) {
-            [info.peripheral writeValue:[data data] forCharacteristic:info.writeCharacteristic type:CBCharacteristicWriteWithResponse];
+    dispatch_async(self.serialDataSendingQueue, ^{
+        if (hostDataToSend == nil || hostDataToSend.count == 0) {
+            return;
         }
-    }
-    
-    [hostDataToSend removeAllObjects];
+        
+        for (MessageData *data in hostDataToSend){
+            PeripheralInfo *info = self.discoveredPeripherals[[data deviceUUID]];
+            if (info != nil) {
+                [info.peripheral writeValue:[data data] forCharacteristic:info.writeCharacteristic type:CBCharacteristicWriteWithResponse];
+            }
+        }
+        
+        [hostDataToSend removeAllObjects];
+    });
 }
 
 /***********************************************************************/
@@ -694,24 +706,26 @@
 
 - (void)sendDataToHost
 {
-    if (dataToSend == nil || dataToSend.count == 0) {
-        return;
-    }
-    
-    NSMutableArray *tmp = [[NSMutableArray alloc]init];
-    
-    for (NSData *data in dataToSend){
-        BOOL didSent = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
-        
-        if (!didSent) {
-            CCLOG(@"message didn't send, break.");
-            break;
-        } else {
-            [tmp addObject:data];
+    dispatch_async(self.serialDataSendingQueue, ^{
+        if (dataToSend == nil || dataToSend.count == 0) {
+            return;
         }
-    }
-    
-    [dataToSend removeObjectsInRange:(NSRange){0, [tmp count]}];
+        
+        NSMutableArray *tmp = [[NSMutableArray alloc]init];
+        
+        for (NSData *data in dataToSend){
+            BOOL didSent = [self.peripheralManager updateValue:data forCharacteristic:self.sendCharacteristic onSubscribedCentrals:nil];
+            
+            if (!didSent) {
+                CCLOG(@"message didn't send, break.");
+                break;
+            } else {
+                [tmp addObject:data];
+            }
+        }
+        
+        [dataToSend removeObjectsInRange:(NSRange){0, [tmp count]}];
+    });
 }
 
 - (void)peripheralManager:(CBPeripheralManager *)peripheral didReceiveWriteRequests:(NSArray<CBATTRequest *> *)requests
